@@ -12,6 +12,16 @@ local Fishing = {}
 local isCooldown = false
 local lastBait: Instance? = nil
 
+local fishingFolder = ReplicatedStorage:WaitForChild("Fishing")
+local fishingCast = fishingFolder:WaitForChild("Cast") :: RemoteEvent
+local fishingHooked = fishingFolder:WaitForChild("Hooked") :: RemoteEvent
+
+local onHookedCallback: ((fish: any) -> ())? = nil
+
+function Fishing.onHooked(callback: (fish: any) -> ())
+	onHookedCallback = callback
+end
+
 function Fishing.clearBait()
 	if lastBait then
 		lastBait:Destroy()
@@ -43,6 +53,7 @@ local function spawnBaitAt(position: Vector3)
 	p.Parent = Workspace
 	lastBait = p
 end
+
 local function getProjectileLanding(char: Model, initialSpeed: number, gravity: Vector3): Vector3?
 	if not char then return nil end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -73,10 +84,15 @@ local function getProjectileLanding(char: Model, initialSpeed: number, gravity: 
 
 	-- Plug back into full formula: p = p0 + v*t + 0.5*a*t^2
 	local landingPos = origin + velocity * t + 0.5 * gravity * t * t
-	print(landingPos)
 	return landingPos
 end
 
+fishingHooked.OnClientEvent:Connect(function(fish: any)
+	print(fish)
+	if onHookedCallback then
+		onHookedCallback(fish)
+	end
+end)
 
 function Fishing.trySwingRodWithPower(player: Player, selectedHandIndex: number?, handSlots: {[number]: any}, power01: number?)
 	if isCooldown then return end
@@ -90,16 +106,16 @@ function Fishing.trySwingRodWithPower(player: Player, selectedHandIndex: number?
 	local ignore: {Instance} = {}
 	local char = player.Character
 	if char then table.insert(ignore, char) end
-	print(maxDistance)
 	local result = getProjectileLanding(
 		char,
-		maxDistance,                          -- initial speed (studs/second)
-		Vector3.new(0, -196.2, 0)    -- gravity (Roblox default ~ -196.2 
+		maxDistance,
+		Vector3.new(0, -196.2, 0)
 	)
-		print(result)
 	if result then
 		spawnBaitAt(result)
 		isCooldown = true
+		print("start fire")
+		fishingCast:FireServer({ position = result, power = p })
 		task.delay(0.8, function()
 			isCooldown = false
 		end)

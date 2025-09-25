@@ -7,7 +7,6 @@ local UserInputService = game:GetService("UserInputService")
 local Fishing = require(script.Parent:WaitForChild("Fishing"))
 
 local GuiService = game:GetService("GuiService")
-local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -45,6 +44,166 @@ mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 mainFrame.Parent = screenGui
 mainFrame.Visible = false -- start hidden
+
+-- Minigame panel (hidden until hooked)
+local miniFrame = Instance.new("Frame")
+miniFrame.Name = "FishingMinigame"
+miniFrame.Size = UDim2.fromOffset(60, 300)
+miniFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+miniFrame.Position = UDim2.new(0.25, 0, 0.4, 0)
+miniFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+miniFrame.BackgroundTransparency = 1
+miniFrame.Visible = false
+miniFrame.Parent = screenGui
+
+-- Vertical bar
+local bar = Instance.new("Frame")
+bar.Size = UDim2.new(0, 20, 1, -20) -- tall, thin bar
+bar.AnchorPoint = Vector2.new(0.5, 0.5)
+bar.Position = UDim2.new(0.5, 0, 0.5, 0)
+bar.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- base color (not visible once gradient is applied)
+bar.Parent = miniFrame
+Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 10)
+
+-- Gradient
+local gradient = Instance.new("UIGradient")
+gradient.Rotation = 90 -- vertical top-to-bottom
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(196, 224, 255)),   -- top (0%)
+    ColorSequenceKeypoint.new(0.15, Color3.fromRGB(196, 224, 255)), -- keep red until 15%
+    ColorSequenceKeypoint.new(0.151, Color3.fromRGB(73, 182, 224)), -- transition just after 15%
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 10, 94))   -- bottom
+})
+gradient.Parent = bar
+
+-- Cursor (moves up & down)
+local cursor = Instance.new("ImageLabel")
+cursor.Name = "FishCursor"
+cursor.Size = UDim2.fromOffset(80, 80) -- bigger fish (overflow bar)
+cursor.AnchorPoint = Vector2.new(0.5, 0.5)
+cursor.Position = UDim2.new(0.5, 0, 0.5, 0) -- starts near top
+cursor.BackgroundTransparency = 1 -- no background
+cursor.Image = "rbxassetid://9400392150" -- 🐟 fish icon
+cursor.ImageColor3 = Color3.fromRGB(220, 220, 220)
+cursor.Parent = bar
+
+-- Make sure the bar does NOT clip children
+bar.ClipsDescendants = false
+
+
+local ContextActionService = game:GetService("ContextActionService")
+
+local miniActive = false
+local miniResultFish: any = nil
+local inventorySlots: {[number]: SlotData} = {}
+
+local function updateSlotVisual(slotData: SlotData)
+	if slotData.item then
+		slotData.slot.Image = slotData.item.Icon
+	else
+		slotData.slot.Image = ""
+	end
+end
+
+local function addFishToInventory(fish: any)
+	-- find first empty slot
+	for i = 1, #inventorySlots do
+		if not inventorySlots[i].item then
+			local slotData = inventorySlots[i]
+			slotData.item = {
+				Name = fish.Name,
+				Icon = fish.Icon or "",
+				Type = "consumable",
+				Model = nil,
+				Id = fish.Id or 0,
+			}
+			updateSlotVisual(slotData)
+			return true
+		end
+	end
+	return false
+end
+
+local function finishMinigame(success: boolean)
+	miniActive = false
+	miniFrame.Visible = false
+	ContextActionService:UnbindAction("MiniGameSpace") -- ปลด bind space กลับมากระโดดได้
+	if success and miniResultFish then
+		addFishToInventory(miniResultFish)
+	end
+	Fishing.clearBait()
+	miniResultFish = nil
+end
+
+local jumpScale = 0.2 -- ปรับขนาดเด้ง
+local pos = 0.5
+
+local function handleMinigameInput(actionName, inputState, inputObject)
+	if not miniActive then return Enum.ContextActionResult.Pass end
+	if inputState == Enum.UserInputState.Begin then
+		local currentScale = cursor.Position.Y.Scale
+		-- เด้ง cursor ขึ้น - jumpScale
+		local newPos = math.clamp(currentScale - jumpScale, 0, 1)
+		cursor.Position = UDim2.new(0.5, 0, newPos, 0)
+		if newPos <= 0.15 then
+			finishMinigame(true)
+			miniActive = false
+			return Enum.ContextActionResult.Sink
+		end
+		-- **อัพเดท pos ด้วย**
+		pos = newPos
+
+		-- ถ้า cursor ต่ำกว่า 0.2 → จบเกมสำเร็จ
+		
+		return Enum.ContextActionResult.Sink
+	end
+	return Enum.ContextActionResult.Pass
+end
+
+local function startMinigame(fish: any)
+	miniResultFish = fish
+	miniActive = true
+	miniFrame.Visible = true
+
+	ContextActionService:BindAction("MiniGameSpace", handleMinigameInput, false, Enum.KeyCode.Space)
+
+	local speed = 0.1
+
+	cursor.Position = UDim2.new(0.5, 0, pos, 0)
+
+	local reachedTopTime = nil
+	local connection
+	connection = game:GetService("RunService").Heartbeat:Connect(function(dt)
+		if not miniActive then
+			connection:Disconnect()
+			return
+		end
+
+		-- ถ้ายังไม่ถึง top ให้เคลื่อน
+		if not reachedTopTime then
+			pos = pos + speed * dt
+			if pos >= 1 then
+				pos = 1
+				reachedTopTime = tick()
+			end
+			cursor.Position = UDim2.new(0.5, 0, pos, 0)
+		else
+			-- ถ้าอยู่บนสุดแล้ว 0.2 วิผ่านไป → จบเกม
+			if tick() - reachedTopTime >= 0.2 then
+				connection:Disconnect()
+				if miniActive then
+					finishMinigame(false)
+				end
+			end
+		end
+	end)
+end
+
+
+Fishing.onHooked(function(fish)
+	startMinigame(fish)
+end)
+
 
 -- Power meter (bottom-left)
 local powerFrame = Instance.new("Frame")
@@ -356,7 +515,6 @@ grid.Parent = inventoryFrame
 -- Removed embedded hand section from the main panel; using permanent hand bar instead
 
 --// Data containers
-local inventorySlots: {[number]: SlotData} = {}
 -- handSlots declared earlier to be used in equip function
 
 -- Selection state
@@ -454,13 +612,6 @@ local function makeSlot(parent: Instance, index: number, isHand: boolean): SlotD
 	return slotData
 end
 
-local function updateSlotVisual(slotData: SlotData)
-	if slotData.item then
-		slotData.slot.Image = slotData.item.Icon
-	else
-		slotData.slot.Image = ""
-	end
-end
 
 --// Drag system
 local function beginDrag(slotData: SlotData)
