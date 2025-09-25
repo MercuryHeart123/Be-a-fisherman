@@ -4,7 +4,10 @@
 print("InventoryUI loaded")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local Fishing = require(script.Parent:WaitForChild("Fishing"))
+
 local GuiService = game:GetService("GuiService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -25,12 +28,12 @@ type SlotData = {
 	slot: ImageButton,
 	item: InventoryItem?,
 }
-
-type SelectedItem = {
+ 
+ type SelectedItem = {
 	item: InventoryItem,
 	slot: SlotData,
-}
-
+ }
+ 
 --// UI Containers
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "InventoryUI"
@@ -42,6 +45,39 @@ mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 mainFrame.Parent = screenGui
 mainFrame.Visible = false -- start hidden
+
+-- Power meter (bottom-left)
+local powerFrame = Instance.new("Frame")
+powerFrame.Name = "PowerMeter"
+powerFrame.Size = UDim2.fromOffset(180, 180)
+powerFrame.AnchorPoint = Vector2.new(1, 1) -- bottom-right
+powerFrame.Position = UDim2.new(1, -20, 1, -20) -- 20px from right and bottom
+powerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+powerFrame.BackgroundTransparency = 0.2
+powerFrame.Visible = false
+powerFrame.Parent = screenGui
+
+
+local powerCorner = Instance.new("UICorner")
+powerCorner.CornerRadius = UDim.new(1, 0)
+powerCorner.Parent = powerFrame
+
+local powerFill = Instance.new("Frame")
+powerFill.Name = "Fill"
+powerFill.BackgroundColor3 = Color3.fromRGB(70, 200, 255)
+powerFill.BackgroundTransparency = 0.1
+powerFill.Size = UDim2.new(1, 0, 0, 0)
+powerFill.AnchorPoint = Vector2.new(0.5, 1)
+powerFill.Position = UDim2.new(0.5, 0, 1, 0)
+powerFill.Parent = powerFrame
+
+local powerFillCorner = Instance.new("UICorner")
+powerFillCorner.CornerRadius = UDim.new(1, 0)
+powerFillCorner.Parent = powerFill
+
+local charging = false
+local power01 = 0
+local powerIncrementPerSecond = 1.4 -- seconds to full ~1.42
 
 -- Permanent Hand Bar (always visible)
 local handBar = Instance.new("Frame")
@@ -138,24 +174,25 @@ local function cacheBaseNeckC0(model: Model)
 		end
 	end
 end
-local function setFishingMovement(character, canRun)
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
 
-    if canRun then
-        humanoid.WalkSpeed = 16  -- normal walking speed
-    else
-        humanoid.WalkSpeed = 10   -- slower, เดินได้แต่วิ่งไม่ได้
-    end
+local function setFishingMovement(character, canRun)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	if canRun then
+		humanoid.WalkSpeed = 16
+	else
+		humanoid.WalkSpeed = 10
+	end
 end
 local function clearEquippedOnPreview()
-	setFishingMovement(player.Character, true)  -- เดินได้แต่ไม่วิ่ง
+	setFishingMovement(player.Character, true)
 
-    if equippedPreviewModel then
-        equippedPreviewModel.Parent = nil
-        equippedPreviewModel:Destroy()
-        equippedPreviewModel = nil
-    end
+	if equippedPreviewModel then
+		equippedPreviewModel.Parent = nil
+		equippedPreviewModel:Destroy()
+		equippedPreviewModel = nil
+	end
 
 	if equippedMotor then
 		equippedMotor:Destroy()
@@ -177,7 +214,7 @@ local function equipSelectedItemOnPreview(selectedIndex: number?)
 	local hand = getRightHand(c)
 	if not hand then return end
 	if item.Type == "rod" then
-		setFishingMovement(player.Character, false)  -- เดินได้แต่ไม่วิ่ง
+		setFishingMovement(player.Character, false)
 	end
 	local itemClone:Model = item.Model:Clone()
 	-- make sure all parts are non-colliding for preview
@@ -203,13 +240,13 @@ local function equipSelectedItemOnPreview(selectedIndex: number?)
 	-- create a Motor6D from hand to the item
 	local motor = Instance.new("Motor6D")
 	motor.Name = "ItemGrip"
-	motor.Part0 = hand       -- มือ
-	motor.Part1 = attach     -- item
-	motor.C0 = CFrame.new(attach.Size.X/4, -attach.Size.Z/2+ attach.Size.Z*0.2/2, -attach.Size.Y/2 + attach.Size.Y*0.2/2) -- offset จาก hand → ปรับแกน /ตำแหน่ง
-	motor.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.pi/2, 0, 0) -- offset ภายใน item
-	motor.Parent = hand      -- parent ต้องเป็น hand
+	motor.Part0 = hand
+	motor.Part1 = attach
+	motor.C0 = CFrame.new(attach.Size.X/4, -attach.Size.Z/2+ attach.Size.Z*0.2/2, -attach.Size.Y/2 + attach.Size.Y*0.2/2)
+	motor.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.pi/2, 0, 0)
+	motor.Parent = hand
 
-	attach.Parent = hand -- ไม่ใช่ c / character โดยตรง
+	attach.Parent = hand
 
 	equippedPreviewModel = attach
 	equippedMotor = motor
@@ -239,7 +276,6 @@ local function setupCharacterPreview(pl: Player)
 	local camOffset = Vector3.new(0, 0, 24)
 	previewCamera.CFrame = CFrame.new(lookAt + camOffset, lookAt)
 	previewCamera.Parent = worldModel
-
 end
 
 local function updatePreviewOrientation(mousePos: Vector2)
@@ -321,6 +357,7 @@ grid.Parent = inventoryFrame
 
 --// Data containers
 local inventorySlots: {[number]: SlotData} = {}
+-- handSlots declared earlier to be used in equip function
 
 -- Selection state
 local selectedHand: number? = nil
@@ -341,6 +378,38 @@ local function updateHandSelectionVisual()
 	end
 end
 
+local function showPowerMeterIfRod()
+	local slot = selectedHand and handSlots[selectedHand] or nil
+	local shouldShow = slot ~= nil and slot.item ~= nil and slot.item.Type == "rod"
+	powerFrame.Visible = shouldShow
+	if not shouldShow then
+		charging = false
+		power01 = 0
+		powerFill.Size = UDim2.new(1, 0, 0, 0)
+	end
+end
+
+local function startCharging()
+	charging = true
+end
+
+local function stopChargingAndCast()
+	if not charging then return end
+	charging = false
+	Fishing.trySwingRodWithPower(player, selectedHand, handSlots, power01)
+	power01 = 0
+	powerFill.Size = UDim2.new(1, 0, 0, 0)
+end
+
+-- heartbeat update for charging
+local RunService = game:GetService("RunService")
+RunService.Heartbeat:Connect(function(dt)
+	if charging then
+		power01 = math.clamp(power01 + powerIncrementPerSecond * dt, 0, 1)
+		powerFill.Size = UDim2.new(1, 0, power01, 0)
+	end
+end)
+
 local function selectHandIndex(i: number)
 	local slot = handSlots[i]
 	if slot and slot.item then
@@ -349,13 +418,12 @@ local function selectHandIndex(i: number)
 	else
 		selectedHand = nil
 		clearEquippedOnPreview()
+		Fishing.clearBait()
 	end
 	updateHandSelectionVisual()
-	-- apply item model on preview
-	
+	showPowerMeterIfRod()
 end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 -- Example items
 local sampleItems: {InventoryItem} = {
 	{ Name="Fishing Rod", Icon="rbxassetid://12345678", Type="rod", Model=ReplicatedStorage:WaitForChild("FishingRodModel"), Id=1 },
@@ -373,7 +441,7 @@ local function makeSlot(parent: Instance, index: number, isHand: boolean): SlotD
 	local slot = Instance.new("ImageButton")
 	slot.Name = (isHand and "HandSlot" or "Slot") .. tostring(index)
 	slot.BackgroundColor3 = isHand and HAND_DEFAULT_COLOR or Color3.fromRGB(72, 255, 0)
-
+	
 	slot.Parent = parent
 	slot.ScaleType = Enum.ScaleType.Fit
 	slot.Image = ""
@@ -409,7 +477,6 @@ local function beginDrag(slotData: SlotData)
 		equipSelectedItemOnPreview(selectedHand)
 		return
 	end
-
 
 	draggingData = slotData.item
 	originalSlot = slotData
@@ -511,6 +578,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
+
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		endDrag(UserInputService:GetMouseLocation())
@@ -553,5 +621,18 @@ UserInputService.InputBegan:Connect(function(input)
 		elseif input.KeyCode == Enum.KeyCode.Three then
 			selectHandIndex(3)
 		end
+	end
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 and not mainFrame.Visible then
+		local slot = selectedHand and handSlots[selectedHand] or nil
+		if slot and slot.item and slot.item.Type == "rod" then
+			startCharging()
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		stopChargingAndCast()
 	end
 end)
