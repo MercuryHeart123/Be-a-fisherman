@@ -5,7 +5,10 @@ print("InventoryUI loaded")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local Fishing = require(script.Parent:WaitForChild("Fishing"))
+local Types = require(script.Parent:WaitForChild("types"))
 
+type BaitState = Types.BaitState
+local BaitState = Types.BaitState
 local GuiService = game:GetService("GuiService")
 
 local player = Players.LocalPlayer
@@ -124,7 +127,12 @@ local function addFishToInventory(fish: any)
 	return false
 end
 
+
+local jumpScale = 0.1 -- ปรับขนาดเด้ง
+local pos = 0.5
+
 local function finishMinigame(success: boolean)
+	pos = 0.5
 	miniActive = false
 	miniFrame.Visible = false
 	ContextActionService:UnbindAction("MiniGameSpace") -- ปลด bind space กลับมากระโดดได้
@@ -135,15 +143,22 @@ local function finishMinigame(success: boolean)
 	miniResultFish = nil
 end
 
-local jumpScale = 0.2 -- ปรับขนาดเด้ง
-local pos = 0.5
 
 local function handleMinigameInput(actionName, inputState, inputObject)
 	if not miniActive then return Enum.ContextActionResult.Pass end
 	if inputState == Enum.UserInputState.Begin then
 		local currentScale = cursor.Position.Y.Scale
+		local step = 0
+		local bait = Fishing.isBaitInsideCircle()
+		if bait == BaitState.Out  then
+			step = currentScale + jumpScale
+		elseif bait == BaitState.In then
+			step = currentScale - jumpScale
+		elseif bait == BaitState.Pressed then
+			step = currentScale
+		end
 		-- เด้ง cursor ขึ้น - jumpScale
-		local newPos = math.clamp(currentScale - jumpScale, 0, 1)
+		local newPos = math.clamp(step, 0, 1)
 		cursor.Position = UDim2.new(0.5, 0, newPos, 0)
 		if newPos <= 0.15 then
 			finishMinigame(true)
@@ -153,7 +168,6 @@ local function handleMinigameInput(actionName, inputState, inputObject)
 		-- **อัพเดท pos ด้วย**
 		pos = newPos
 
-		-- ถ้า cursor ต่ำกว่า 0.2 → จบเกมสำเร็จ
 		
 		return Enum.ContextActionResult.Sink
 	end
@@ -169,7 +183,7 @@ local function startMinigame(fish: any)
 
 	local speed = 0.1
 
-	cursor.Position = UDim2.new(0.5, 0, pos, 0)
+	cursor.Position = UDim2.new(0.5, 0, 0.5, 0)
 
 	local reachedTopTime = nil
 	local connection
@@ -179,22 +193,29 @@ local function startMinigame(fish: any)
 			return
 		end
 
-		-- ถ้ายังไม่ถึง top ให้เคลื่อน
-		if not reachedTopTime then
-			pos = pos + speed * dt
-			if pos >= 1 then
-				pos = 1
-				reachedTopTime = tick()
-			end
-			cursor.Position = UDim2.new(0.5, 0, pos, 0)
-		else
-			-- ถ้าอยู่บนสุดแล้ว 0.2 วิผ่านไป → จบเกม
-			if tick() - reachedTopTime >= 0.2 then
-				connection:Disconnect()
+		-- -- ถ้ายังไม่ถึง top ให้เคลื่อน
+		-- if not reachedTopTime then
+		-- 	pos = pos + speed * dt
+		-- 	if pos >= 1 then
+		-- 		pos = 1
+		-- 		reachedTopTime = tick()
+		-- 	end
+		-- 	cursor.Position = UDim2.new(0.5, 0, pos, 0)
+		-- else
+		-- 	-- ถ้าอยู่บนสุดแล้ว 0.2 วิผ่านไป → จบเกม
+		-- 	if tick() - reachedTopTime >= 0.2 then
+		-- 		connection:Disconnect()
+		-- 		if miniActive then
+		-- 			finishMinigame(false)
+		-- 		end
+		-- 	end
+		-- end
+		if pos >= 1 then
+			connection:Disconnect()
+			pos = 1
 				if miniActive then
 					finishMinigame(false)
 				end
-			end
 		end
 	end)
 end
