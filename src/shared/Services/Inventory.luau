@@ -4,9 +4,11 @@ local RodItem = require(game.ReplicatedStorage.Shared.Models.RodItem)
 local ConsumableItem = require(game.ReplicatedStorage.Shared.Models.ConsumableItem)
 
 -- Define the full InventoryService type (methods + fields)
-type SlotData = {
+export type ItemType = RodItem.Type | ConsumableItem.Type | nil
+export type SlotData = {
 	slotId: number,
-	item: RodItem.Type | ConsumableItem.Type | nil,
+    uiSlot: ImageButton?, -- Reference to the UI slot, optional
+	item: ItemType,
 }
 
 export type Type = {
@@ -17,7 +19,7 @@ export type Type = {
 	GetAllInventoryItems: (self: Type) -> {SlotData}, -- example extra method
     GetAllHandItems: (self: Type) -> {SlotData}, -- example extra method
     MoveItem: (self: Type, fromType: "inventory" | "hand", fromIndex: number, toType: "inventory" | "hand", toIndex: number) -> (),
-
+    AddItemByIndex: (self: Type, slotType: "inventory" | "hand", index: number, item: RodItem.Type | ConsumableItem.Type) -> (),
 	-- Fields
 	ItemFactory: ItemFactory.Type,
 	InventoryItems: {SlotData},
@@ -48,6 +50,7 @@ end
 
 -- Methods
 function InventoryService:AddRod(name: string, price: number)
+    print("[InventoryService] Adding rod:", name, price)
 	local rod = self.ItemFactory.createRod(name, "icon.png", 1, price, 10, 5, 2)
 	table.insert(self.InventoryItems, rod)
 end
@@ -69,7 +72,6 @@ function InventoryService:MoveItem(fromType: "inventory" | "hand", fromIndex: nu
 	-- Select the correct source and destination tables
 	local fromList = if fromType == "inventory" then self.InventoryItems else self.HandItems
 	local toList = if toType == "inventory" then self.InventoryItems else self.HandItems
-
 	-- Validate indexes
 	if not fromList[fromIndex] or not toList[toIndex] then
 		warn(`[InventoryService] Invalid slot index (from {fromType}:{fromIndex} → to {toType}:{toIndex})`)
@@ -81,12 +83,28 @@ function InventoryService:MoveItem(fromType: "inventory" | "hand", fromIndex: nu
 
 	-- If both have items, swap them
 	if fromSlot.item and toSlot.item then
+        fromSlot.uiSlot.Image, toSlot.uiSlot.Image = toSlot.item.Icon, fromSlot.item.Icon
 		fromSlot.item, toSlot.item = toSlot.item, fromSlot.item
 	else
 		-- Otherwise, move item
 		toSlot.item = fromSlot.item
+        toSlot.uiSlot.Image = fromSlot.item.Icon
 		fromSlot.item = nil
 	end
+end
+
+function InventoryService:AddItemByIndex(slotType: "inventory" | "hand", index: number, item: RodItem.Type | ConsumableItem.Type)
+    -- Select the correct target list
+    local targetList = if slotType == "inventory" then self.InventoryItems else self.HandItems
+
+    -- Validate index
+    if not targetList[index] then
+        warn(`[InventoryService] Invalid slot index {slotType}:{index}`)
+        return
+    end
+
+    -- Place item in the specified slot
+    targetList[index].item = item
 end
 
 return InventoryService
