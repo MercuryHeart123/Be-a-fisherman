@@ -5,10 +5,10 @@ local FishItem = require(ReplicatedStorage.Shared.Models.FishItem)
 local FishingService = {}
 
 local pool = {
-    { id = 101, name = "Salmon", chance = 50, rarity = "Common", price = 10, health = 30, icon = "rbxassetid://salmonIcon", modelName = "SalmonModel" },
-    { id = 102, name = "Golden Carp", chance = 10, rarity = "Rare", price = 50, health = 50, icon = "rbxassetid://carpIcon", modelName = "GoldenCarpModel" },
-    { id = 103, name = "Mysterious Fish", chance = 5, rarity = "Legendary", price = 200, health = 100, icon = "rbxassetid://mysteryIcon", modelName = "MysteriousFishModel" },
-    { id = 104, name = "Boot", chance = 35, rarity = "Trash", price = 1, health = 1, icon = "rbxassetid://bootIcon", modelName = "BootModel" },
+    { id = 101, name = "Salmon", chance = 50, rarity = "Common", price = 10, health = 30, icon = "rbxassetid://9400392150", modelName = "SalmonModel" },
+    { id = 102, name = "Golden Carp", chance = 10, rarity = "Rare", price = 50, health = 50, icon = "rbxassetid://9400392150", modelName = "GoldenCarpModel" },
+    { id = 103, name = "Mysterious Fish", chance = 5, rarity = "Legendary", price = 200, health = 100, icon = "rbxassetid://9400392150", modelName = "MysteriousFishModel" },
+    { id = 104, name = "Boot", chance = 35, rarity = "Trash", price = 1, health = 1, icon = "rbxassetid://9400392150", modelName = "BootModel" },
 }
 
 local function rollFish(luck: number): FishItem.Fish

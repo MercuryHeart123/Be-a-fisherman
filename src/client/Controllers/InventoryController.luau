@@ -155,4 +155,14 @@ function InventoryController:GetSelectedItem():InventoryService.ItemType
 	return SelectedItem
 end
 
+function InventoryController:AddItemToInventory(item:InventoryService.ItemType)
+	local slot = clientInventory:AddItemToInventory(item)
+	print("Added item to inventory:", item, slot)
+	if slot and slot.uiSlot then
+		InventoryUI:UpdateSlot(slot)
+		return true
+	end
+	return false
+end
+
 return InventoryController

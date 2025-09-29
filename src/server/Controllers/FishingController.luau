@@ -8,13 +8,22 @@ FishingController.__index = FishingController
 function FishingController:Init()
     local fishingCast = Remotes.FishingCast()
     fishingCast.OnServerEvent:Connect(function(player, data)
-        local luck = data.rod.luck or 0
-        local fish = FishingService.RollFish(luck)
+        if typeof(data) ~= "table" then
+            return
+        end
+
+        local rodData = data.rod or {}
+        local baseLuck = rodData.luck or rodData.Luck or 0
+        local bonusLuck = data.bonusLuck or 0
+        local totalLuck = baseLuck + bonusLuck
+
+        local fish = FishingService.RollFish(totalLuck)
 
         fishingCast:FireClient(player, {
             fish = fish,
-            rod = data.rod,
+            rod = rodData,
             position = data.position,
+            bonusLuck = bonusLuck,
         })
     end)
 end

@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
 local Types = require(script.Parent.Parent.Types)
 
 local FishingUI = require(script.Parent.Parent.UI.FishingUI)
@@ -17,6 +18,7 @@ local FishingController = {}
 FishingController.__index = FishingController
 charging = false
 power = 0
+bait = nil
 powerIncrementPerSecond = 1.4 -- Adjust as needed
 local roamSize = 24 -- square side length (studs)
 local debugBorderParts: {BasePart} = {}
@@ -25,39 +27,151 @@ local roamConn: RBXScriptConnection? = nil
 
 type BaitState = Types.BaitState
 local BaitState = Types.BaitState
+local function showDamageText(circlePart: BasePart?, damage: number)
+	if not circlePart or damage <= 0 then
+		return
+	end
 
-function isBaitInsideCircle(bait: Part): Types.BaitState
+	local displayValue = math.floor(damage + 0.5)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "DamagePop"
+	billboard.Size = UDim2.fromOffset(80, 40)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 80
+	billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local label = Instance.new("TextLabel")
+	label.Name = "DamageText"
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.Text = string.format("-%d", displayValue)
+	label.TextColor3 = Color3.fromRGB(255, 90, 90)
+	label.TextStrokeColor3 = Color3.new()
+	label.TextStrokeTransparency = 0.4
+	label.Parent = billboard
+
+	billboard.Parent = circlePart
+
+	local riseTween = TweenService:Create(
+		billboard,
+		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ StudsOffsetWorldSpace = billboard.StudsOffsetWorldSpace + Vector3.new(0, 1, 0) }
+	)
+	riseTween:Play()
+
+	local fadeTween = TweenService:Create(
+		label,
+		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.2),
+		{ TextTransparency = 1, TextStrokeTransparency = 1 }
+	)
+	fadeTween:Play()
+	fadeTween.Completed:Connect(function()
+		if billboard then
+			billboard:Destroy()
+		end
+	end)
+end
+
+local function showMissHeart(worldPos: Vector3?)
+	if not worldPos then
+		return
+	end
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "MissHeartAnchor"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.CFrame = CFrame.new(worldPos)
+	anchor.Parent = Workspace
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "MissHeart"
+	billboard.Size = UDim2.fromOffset(70, 70)
+	billboard.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = 80
+	billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local label = Instance.new("TextLabel")
+	label.Name = "HeartText"
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.GothamBlack
+	label.Text = "❤"
+	label.TextColor3 = Color3.fromRGB(255, 110, 150)
+	label.TextStrokeColor3 = Color3.new(0, 0, 0)
+	label.TextStrokeTransparency = 0.3
+	label.TextScaled = true
+	label.Parent = billboard
+
+	billboard.Parent = anchor
+
+	local riseTween = TweenService:Create(
+		billboard,
+		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ StudsOffsetWorldSpace = billboard.StudsOffsetWorldSpace + Vector3.new(0, 1.2, 0) }
+	)
+	riseTween:Play()
+
+	local fadeTween = TweenService:Create(
+		label,
+		TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0.1),
+		{ TextTransparency = 1, TextStrokeTransparency = 1 }
+	)
+	fadeTween:Play()
+
+	local function cleanup()
+		if anchor then
+			anchor:Destroy()
+			anchor = nil
+		end
+	end
+
+	fadeTween.Completed:Connect(cleanup)
+	task.delay(1.2, cleanup)
+end
+
+function isBaitInsideCircle(bait: Part): (Types.BaitState, BasePart?)
 	for idx = #pathCircles, 1, -1 do
 		local info = pathCircles[idx]
 		local dist = (bait.Position - info.center).Magnitude
 
 		-- 🟢 Already pressed
 		if info.isPressed then
-			return BaitState.Pressed
+			return BaitState.Pressed, info.part
 		end
 
 		-- 🟢 Just entered the circle
 		if dist <= info.radius then
 			info.part.Color = Color3.fromRGB(0, 255, 0)
 			info.isPressed = true
-			return BaitState.In
+			return BaitState.In, info.part
 		end
 	end
 
 	-- ⚪ Not inside any circle
-	return BaitState.Out
+	return BaitState.Out, nil
 end
 
 local function handleMinigameInput(actionName, inputState, inputObject, fish: FishItem.Fish, rod: RodItem.Type, bait: Part)
 	if inputState == Enum.UserInputState.Begin then
-		-- local currentScale = cursor.Position.Y.Scale
-		local state = isBaitInsideCircle(bait)
-        print("Bait state:", state)
+		local state, circlePart = isBaitInsideCircle(bait)
 		if state == BaitState.Out  then
 			rod.Health = rod.Health - 1
             FishingUI:LoseHealth()
+			showMissHeart(bait.Position)
 		elseif state == BaitState.In then
-			fish.Health = fish.Health - rod.BasePower
+			local damage = math.max(0, rod.BasePower or 0)
+			fish.Health = fish.Health - damage
+			showDamageText(circlePart, damage)
 		elseif state == BaitState.Pressed then
 		end
 		-- เด้ง cursor ขึ้น - jumpScale
@@ -72,9 +186,9 @@ end
 
 local function startMinigame(rod: RodItem.Type,fish: FishItem.Fish, bait: Part)
     local miniActive = true
-    FishingUI:SetMiniGameState(true)
-    FishingController:startBaitRoam(bait)
-    FishingUI:BuildHealthBar(rod.Health)
+	FishingUI:SetMiniGameState(true)
+	FishingController:startBaitRoam(bait)
+	FishingUI:BuildHealthBar(rod.Health)
     ContextActionService:BindAction(
         "MiniGameSpace",
         function(actionName, inputState, inputObject)
@@ -131,27 +245,11 @@ local function startMinigame(rod: RodItem.Type,fish: FishItem.Fish, bait: Part)
 	end)
 end
 
--- Initialize the controller
 
 function FishingController:Init()
     FishingUI:BuildUI()
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 and not InventoryController:IsInventoryOpen() then
-            local item = InventoryController:GetSelectedItem()
-            if item and item.Type == "rod" then
-                self:startCharging()
-            end
-        end
-	end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 and charging then
-            charging = false
-            self:TryToSwingRodWithPower(InventoryController:GetSelectedItem(), power)
-            power = 0
-            FishingUI:UpdatePowerFill(power)
-        end
-    end)
-
+    
+    self:ReadyToCast()
     -- Update power meter while charging
     RunService.Heartbeat:Connect(function(dt)
         if charging then
@@ -161,17 +259,42 @@ function FishingController:Init()
     end)
 
     Remotes.FishingCast().OnClientEvent:Connect(function(data)
-        print("🐟 You caught:", data.fish)
-        startMinigame(data.rod, data.fish, self.bait)
+        startMinigame(data.rod, data.fish, bait)
         -- Example: add to inventory
         -- InventoryController:AddItem(data.fish)
         -- FishingUI:ShowCatch(data.fish)
     end)
 end
 
+-- Initialize the controller
+function FishingController:ReadyToCast()
+    ContextActionService:BindAction(
+	"RodSwing",
+	function(_, inputState)
+		if inputState == Enum.UserInputState.Begin and not InventoryController:IsInventoryOpen() then
+			local item = InventoryController:GetSelectedItem()
+			if item and item.Type == "rod" then
+				self:startCharging()
+			end
+		elseif inputState == Enum.UserInputState.End and charging then
+			charging = false
+			FishingUI:SetShowLuckyBar(false)
+			self:TryToSwingRodWithPower(InventoryController:GetSelectedItem(), power)
+			power = 0
+			FishingUI:UpdatePowerFill(power)
+
+			return ContextActionService:UnbindAction("RodSwing")
+		end
+	end,
+	false,
+	Enum.KeyCode.Space
+)
+end
+
 function FishingController:startCharging()
     if not charging then
         charging = true
+        FishingUI:SetShowLuckyBar(true)
         power = 0
         FishingUI:UpdatePowerFill(power)
     end
@@ -218,8 +341,6 @@ local function spawnBaitAt(position: Vector3)
 		local clone = baitModel:Clone()
 		clone:PivotTo(CFrame.new(position + Vector3.new(0, 0.1, 0)))
 		clone.Parent = Workspace
-		-- lastBait = clone
-		-- startBaitRoam(position)
 		return clone
 	end
 
@@ -234,15 +355,17 @@ local function spawnBaitAt(position: Vector3)
 	p.Position = position + Vector3.new(0, 0.1, 0)
 	p.Parent = Workspace
 	return p
-	-- startBaitRoam(position)
 end
 
 
 function FishingController:TryToSwingRodWithPower(rod: RodItem.Type, power: number)
     -- Implement the logic to swing the rod with the given power
-    print("Swinging rod:", rod.Name, "with power:", power)
+    local clampedPower = math.clamp(power or 0, 0, 1)
 	-- scale distance based on power
-	local maxDistance = 20 + power * 50
+	local maxDistance = 20 + clampedPower * 50
+
+	local inSweetSpot = FishingUI:IsPowerInSweetSpot(clampedPower)
+	local bonusLuck = inSweetSpot and FishingUI:GetSweetSpotBonus() or 0
 	
 	local ignore: {Instance} = {}
 	local char = UserController:GetLocalUser().Character
@@ -253,13 +376,13 @@ function FishingController:TryToSwingRodWithPower(rod: RodItem.Type, power: numb
 		Vector3.new(0, -196.2, 0)
 	)
 	if result then
-        print("Calculated landing position:", result)
-		local bait = spawnBaitAt(result)
-        self.bait = bait
+        bait = spawnBaitAt(result)
         self.roamCenter = result
+
         Remotes.FishingCast():FireServer({
             position = result,    -- where the bait lands
             rod = rod,          -- the rod used
+            bonusLuck = bonusLuck,
         })
 		-- task.delay(0.8, function()
 		-- 	isCooldown = false
@@ -279,19 +402,29 @@ local function destroyPathCircles()
 	table.clear(pathCircles)
 end
 function FishingController:finishMinigame(fish: FishItem.Fish?, bait: Part?)
-    print("Minigame finished. Caught fish:", fish)
     ContextActionService:UnbindAction("MiniGameSpace") -- ปลด bind space กลับมากระโดดได้
     destroyDebugBorder()
     destroyPathCircles()
     if bait then
         bait:Destroy()
-        self.bait = nil
+        bait = nil
     end
     if roamConn then
 		roamConn:Disconnect()
 		roamConn = nil
 	end
     FishingUI:SetMiniGameState(false)
+    if fish then
+        FishingUI:ShowCatch(fish)
+    end
+    self:ReadyToCast()
+
+	if fish then
+		-- Example: add to inventory
+		print("Caught fish:", fish)
+		InventoryController:AddItemToInventory(fish)
+
+	end
     -- if success and miniResultFish then
     -- 	-- addFishToInventory(miniResultFish)
     -- end
@@ -386,6 +519,7 @@ local function updatePathCircles(baitPos: Vector3)
 end
 function FishingController:startBaitRoam(bait: Part)
     local center = bait.Position
+	print("Starting bait roam at:", center)
 	createDebugBorder(center)
 	if roamConn then roamConn:Disconnect() roamConn = nil end
 	

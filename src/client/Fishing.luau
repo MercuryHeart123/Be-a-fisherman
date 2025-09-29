@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Types = require(script.Parent:WaitForChild("types"))
+local Types = require(script.Parent.Types)
 
 type BaitState = Types.BaitState
 

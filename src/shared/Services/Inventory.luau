@@ -20,6 +20,7 @@ export type Type = {
     GetAllHandItems: (self: Type) -> {SlotData}, -- example extra method
     MoveItem: (self: Type, fromType: "inventory" | "hand", fromIndex: number, toType: "inventory" | "hand", toIndex: number) -> (),
     AddItemByIndex: (self: Type, slotType: "inventory" | "hand", index: number, item: RodItem.Type | ConsumableItem.Type) -> (),
+	AddItemToInventory: (self: Type, item: RodItem.Type | ConsumableItem.Type) -> (boolean), -- returns true if added, false if full
 	-- Fields
 	ItemFactory: ItemFactory.Type,
 	InventoryItems: {SlotData},
@@ -105,6 +106,22 @@ function InventoryService:AddItemByIndex(slotType: "inventory" | "hand", index: 
 
     -- Place item in the specified slot
     targetList[index].item = item
+end
+
+function InventoryService:AddItemToInventory(item: ItemType)
+	if not item then
+		warn("[InventoryService] Cannot add nil item to inventory")
+		return nil
+	end
+	-- Find the first empty slot
+	for _, slot in ipairs(self.InventoryItems) do
+		if not slot.item then
+			slot.item = item
+			return slot
+		end
+	end
+	warn("[InventoryService] Inventory full, cannot add item:", item.Name)
+	return nil
 end
 
 return InventoryService
