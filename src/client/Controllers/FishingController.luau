@@ -10,8 +10,10 @@ local Types = require(script.Parent.Parent.Types)
 local FishingUI = require(script.Parent.Parent.UI.FishingUI)
 local InventoryController = require(script.Parent.InventoryController)
 local UserController = require(script.Parent.UserController)
-local RodItem = require(game.ReplicatedStorage.Shared.Models.RodItem)
-local FishItem = require(game.ReplicatedStorage.Shared.Models.FishItem)
+local CameraController = require(script.Parent.CameraController)
+
+local RodItem = require(ReplicatedStorage.Shared.Models.RodItem)
+local FishItem = require(ReplicatedStorage.Shared.Models.FishItem)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local FishingController = {}
@@ -20,6 +22,7 @@ charging = false
 power = 0
 bait = nil
 powerIncrementPerSecond = 1.4 -- Adjust as needed
+direction = 1
 local roamSize = 24 -- square side length (studs)
 local debugBorderParts: {BasePart} = {}
 local pathCircles: {{ part: BasePart, center: Vector3, radius: number, entered: boolean, isPressed: boolean }} = {}
@@ -188,6 +191,9 @@ local function startMinigame(rod: RodItem.Type,fish: FishItem.Fish, bait: Part)
     local miniActive = true
 	FishingUI:SetMiniGameState(true)
 	FishingController:startBaitRoam(bait)
+	local cameraLookAt = bait.Position + Vector3.new(0, 1, 0)
+	CameraController:LookAtCenter(cameraLookAt, 30, Vector2.new(-45, 0))
+
 	FishingUI:BuildHealthBar(rod.Health)
     ContextActionService:BindAction(
         "MiniGameSpace",
@@ -253,8 +259,18 @@ function FishingController:Init()
     -- Update power meter while charging
     RunService.Heartbeat:Connect(function(dt)
         if charging then
-            power = math.clamp(power + powerIncrementPerSecond * dt, 0, 1)
-            FishingUI:UpdatePowerFill(power)
+			
+			power += powerIncrementPerSecond * dt * direction
+			print("Power:", power)
+			FishingUI:UpdatePowerFill(power)
+			-- check bounds
+			if power >= 1 then
+				power = 1
+				direction = -1 -- reverse
+			elseif power <= 0 then
+				power = 0
+				direction = 1 -- reverse
+			end
         end
     end)
 
@@ -300,7 +316,6 @@ function FishingController:startCharging()
     end
 end
 
-
 local function getProjectileLanding(char: Model, initialSpeed: number, gravity: Vector3): Vector3?
 	if not char then return nil end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -329,10 +344,17 @@ local function getProjectileLanding(char: Model, initialSpeed: number, gravity: 
 		return nil -- never lands in positive time
 	end
 
-	-- Plug back into full formula: p = p0 + v*t + 0.5*a*t^2
+	-- Landing position
 	local landingPos = origin + velocity * t + 0.5 * gravity * t * t
+
+	if roamSize then
+		landingPos += hrp.CFrame.LookVector * (roamSize / 2)
+	end
+
+	
 	return landingPos
 end
+
 
 
 local function spawnBaitAt(position: Vector3)
@@ -418,6 +440,7 @@ function FishingController:finishMinigame(fish: FishItem.Fish?, bait: Part?)
         FishingUI:ShowCatch(fish)
     end
     self:ReadyToCast()
+	CameraController:ClearTarget()
 
 	if fish then
 		-- Example: add to inventory
@@ -431,14 +454,18 @@ function FishingController:finishMinigame(fish: FishItem.Fish?, bait: Part?)
 
 end
 
-
-
-local function createDebugBorder(center: Vector3)
+local function createDebugBorder(char: Model, center: Vector3)
 	destroyDebugBorder()
-	local half = roamSize/2
-	local y = center.Y + 0.05
+	local half = roamSize / 2
 	local thickness = 0.2
 	local color = Color3.fromRGB(255, 0, 0)
+
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local look = hrp.CFrame.LookVector
+	local up = Vector3.yAxis
+	local right = hrp.CFrame.RightVector
 
 	local function mk(pos: Vector3, size: Vector3)
 		local part = Instance.new("Part")
@@ -447,18 +474,20 @@ local function createDebugBorder(center: Vector3)
 		part.Color = color
 		part.Material = Enum.Material.Neon
 		part.Size = size
-		part.CFrame = CFrame.new(pos)
+		part.CFrame = CFrame.lookAt(pos, pos + look, up)
 		part.Name = "BaitBorder"
 		part.Parent = Workspace
 		table.insert(debugBorderParts, part)
 	end
 
-	-- four edges of the square aligned to world axes
-	mk(center + Vector3.new(0, y - center.Y, -half), Vector3.new(roamSize, thickness, thickness))
-	mk(center + Vector3.new(0, y - center.Y, half), Vector3.new(roamSize, thickness, thickness))
-	mk(center + Vector3.new(-half, y - center.Y, 0), Vector3.new(thickness, thickness, roamSize))
-	mk(center + Vector3.new(half, y - center.Y, 0), Vector3.new(thickness, thickness, roamSize))
+	-- edges of rectangle, centered on `center`
+	mk(center + right * half, Vector3.new(thickness, thickness, roamSize))  -- right edge
+	mk(center - right * half, Vector3.new(thickness, thickness, roamSize))  -- left edge
+	mk(center + look * half, Vector3.new(roamSize, thickness, thickness))   -- front edge
+	mk(center - look * half, Vector3.new(roamSize, thickness, thickness))   -- back edge
 end
+
+
 
 local function createCircleMarker(center: Vector3, radius: number)
 	local part = Instance.new("Part")
@@ -518,9 +547,13 @@ local function updatePathCircles(baitPos: Vector3)
 	end
 end
 function FishingController:startBaitRoam(bait: Part)
+	local char = UserController:GetLocalUser().Character
     local center = bait.Position
-	print("Starting bait roam at:", center)
-	createDebugBorder(center)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local look = hrp.CFrame.LookVector
+	local right = hrp.CFrame.RightVector
+	
+	createDebugBorder(char,center)
 	if roamConn then roamConn:Disconnect() roamConn = nil end
 	
 	local currentStart = center
@@ -531,22 +564,24 @@ function FishingController:startBaitRoam(bait: Part)
 	local redirectTimer = 0
 	local warningTime = 0.2 -- seconds
 	local pendingRedirect = false
-
 	local function chooseNewTarget(now)
 		if not center then return end
 		currentStart = now
 		local half = roamSize / 2
-		local target = Vector3.new(
-			center.X + (math.random() * 2 - 1) * half,
-			center.Y,
-			center.Z + (math.random() * 2 - 1) * half
-		)
+	
+		-- random offsets inside the rotated square
+		local offsetRight = right * ((math.random() * 2 - 1) * half)
+		local offsetForward = look * ((math.random() * 2 - 1) * half)
+	
+		local target = center + offsetRight + offsetForward
+	
 		currentTarget = target
 		elapsed = 0
 		local dist = (currentTarget - currentStart).Magnitude
 		local speed = 6 + math.random() * 6 -- studs/sec
 		duration = math.max(0.25, dist / speed)
-		FishingController:createPathCircles(currentStart, currentTarget,5, 2, 1)
+	
+		FishingController:createPathCircles(currentStart, currentTarget, 5, 2, 1)
 	end
 	
 	chooseNewTarget(currentStart)

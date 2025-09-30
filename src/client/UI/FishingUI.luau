@@ -106,10 +106,34 @@ function FishingUI:BuildUI()
     arcTrack.BackgroundTransparency = 0.3
     arcTrack.BorderSizePixel = 0
     arcTrack.ClipsDescendants = false
-    arcTrack.ZIndex = (powerFrame.ZIndex or 1) + 1
     arcTrack.Parent = arcContainer
     Instance.new("UICorner", arcTrack).CornerRadius = UDim.new(1, 0)
 
+    
+
+    local arcFill = Instance.new("Frame")
+    arcFill.Name = "Progress"
+    arcFill.AnchorPoint = Vector2.new(0.5, 1)
+    arcFill.Position = UDim2.new(0.5, 0, 1, -2)
+    arcFill.Size = UDim2.new(1, -4, 0, 0)
+    arcFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    arcFill.BackgroundTransparency = 0.75
+    arcFill.BorderSizePixel = 0
+    arcFill.ZIndex = arcTrack.ZIndex + 1
+    arcFill.Parent = arcTrack
+    Instance.new("UICorner", arcFill).CornerRadius = UDim.new(1, 0)
+
+    local sweetSpotFrame = Instance.new("Frame")
+    sweetSpotFrame.Name = "SweetSpot"
+    sweetSpotFrame.AnchorPoint = Vector2.new(0.5, 1)
+    sweetSpotFrame.Position = UDim2.new(0.5, 0, 1, -2)
+    sweetSpotFrame.Size = UDim2.new(1, -4, 0, 0)
+    sweetSpotFrame.BackgroundColor3 = Color3.fromRGB(81, 207, 100)
+    sweetSpotFrame.BackgroundTransparency = 0
+    sweetSpotFrame.BorderSizePixel = 0
+    sweetSpotFrame.ZIndex = arcFill.ZIndex + 1
+    sweetSpotFrame.Parent = arcTrack
+    Instance.new("UICorner", sweetSpotFrame).CornerRadius = UDim.new(1, 0)
     local cover = Instance.new("ImageLabel")
     cover.Name = "Fishcover"
     cover.Size = UDim2.fromOffset(60, 60) -- bigger fish (overflow bar)
@@ -118,33 +142,8 @@ function FishingUI:BuildUI()
     cover.BackgroundTransparency = 1 -- no background
     cover.Image = "rbxassetid://9400392150" -- 🐟 fish icon
     cover.ImageColor3 = Color3.fromRGB(220, 220, 220)
-    cover.ZIndex = arcTrack.ZIndex + 1
+    cover.ZIndex = sweetSpotFrame.ZIndex + 1
     cover.Parent = arcTrack
-
-    local sweetSpotFrame = Instance.new("Frame")
-    sweetSpotFrame.Name = "SweetSpot"
-    sweetSpotFrame.AnchorPoint = Vector2.new(0.5, 1)
-    sweetSpotFrame.Position = UDim2.new(0.5, 0, 1, -2)
-    sweetSpotFrame.Size = UDim2.new(1, -4, 0, 0)
-    sweetSpotFrame.BackgroundColor3 = Color3.fromRGB(255, 200, 90)
-    sweetSpotFrame.BackgroundTransparency = 0.45
-    sweetSpotFrame.BorderSizePixel = 0
-    sweetSpotFrame.ZIndex = arcTrack.ZIndex
-    sweetSpotFrame.Parent = arcTrack
-    Instance.new("UICorner", sweetSpotFrame).CornerRadius = UDim.new(1, 0)
-
-    local arcFill = Instance.new("Frame")
-    arcFill.Name = "Progress"
-    arcFill.AnchorPoint = Vector2.new(0.5, 1)
-    arcFill.Position = UDim2.new(0.5, 0, 1, -2)
-    arcFill.Size = UDim2.new(1, -4, 0, 0)
-    arcFill.BackgroundColor3 = Color3.fromRGB(70, 200, 255)
-    arcFill.BackgroundTransparency = 0.1
-    arcFill.BorderSizePixel = 0
-    arcFill.ZIndex = sweetSpotFrame.ZIndex + 1
-    arcFill.Parent = arcTrack
-    Instance.new("UICorner", arcFill).CornerRadius = UDim.new(1, 0)
-
     -- Catch toast (shows after successfully reeling a fish)
     local catchFrame = Instance.new("Frame")
     catchFrame.Name = "CatchToast"
@@ -233,14 +232,14 @@ function FishingUI:UpdatePowerFill(power: number)
     if self.PowerArcFill then
         self.PowerArcFill.Size = UDim2.new(1, -4, clamped, 0)
         self.Cover.Position = UDim2.new(0.5, 0, 1 - clamped, 0)
-        if self.ArcFillDefaultColor then
-            self.PowerArcFill.BackgroundColor3 = inSweetSpot and (self.ArcFillSweetColor or self.PowerArcFill.BackgroundColor3) or self.ArcFillDefaultColor
-        end
+        -- if self.ArcFillDefaultColor then
+        --     self.PowerArcFill.BackgroundColor3 = inSweetSpot and (self.ArcFillSweetColor or self.PowerArcFill.BackgroundColor3) or self.ArcFillDefaultColor
+        -- end
     end
 
-    if self.PowerArcSweetSpot then
-        self.PowerArcSweetSpot.BackgroundTransparency = inSweetSpot and 0.15 or 0.45
-    end
+    -- if self.PowerArcSweetSpot then
+    --     self.PowerArcSweetSpot.BackgroundTransparency = inSweetSpot and 0.15 or 0.45
+    -- end
 
     self.LastPowerValue = clamped
 end
