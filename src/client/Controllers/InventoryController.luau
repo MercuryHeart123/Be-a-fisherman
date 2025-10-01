@@ -24,16 +24,23 @@ InventoryController.__index = InventoryController
 function InventoryController:Init()
 	-- Build the UI
 	InventoryUI:BuildSlots(clientInventory.InventoryItems)
-	local tempRod = ItemFactory.createRod("test", "rbxassetid://12345678", 1, 123, 10, 5, 2, ReplicatedStorage.Assets.Models:WaitForChild("FishingRodModel"))
-	clientInventory:AddItemByIndex("inventory",1,tempRod)
-	InventoryUI:UpdateAllSlots(clientInventory.InventoryItems,clientInventory.HandItems)
+	local tempRod = ItemFactory.createRod(
+		"test",
+		"rbxassetid://12345678",
+		1,
+		123,
+		10,
+		5,
+		2,
+		ReplicatedStorage.Assets.Models:WaitForChild("FishingRodModel")
+	)
+	clientInventory:AddItemByIndex("inventory", 1, tempRod)
+	InventoryUI:UpdateAllSlots(clientInventory.InventoryItems, clientInventory.HandItems)
 	if player.Character then
 		InventoryUI:SetupCharacterPreview(player)
-
 	end
 	player.CharacterAdded:Connect(function()
 		InventoryUI:SetupCharacterPreview(player)
-
 	end)
 	HandUI:BuildSlots(clientInventory.HandItems)
 
@@ -63,7 +70,6 @@ function InventoryController:Init()
 		end
 	end
 
-
 	-- Example: connect key to toggle inventory
 	UserInputService.InputBegan:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.Tab then
@@ -71,7 +77,6 @@ function InventoryController:Init()
 		elseif input.KeyCode == Enum.KeyCode.One then
 			self:EquipItem(1)
 			print("Before fishing, selected item:", InventoryController:GetSelectedItem())
-
 		elseif input.KeyCode == Enum.KeyCode.Two then
 			self:EquipItem(2)
 		elseif input.KeyCode == Enum.KeyCode.Three then
@@ -82,33 +87,43 @@ end
 
 -- Toggle inventory UI
 function InventoryController:ToggleInventory()
-    local visible = not InventoryUI:GetVisible()
-    InventoryUI:SetVisible(visible)
+	local visible = not InventoryUI:GetVisible()
+	InventoryUI:SetVisible(visible)
 end
 
 local function getRightHand(model: Model): BasePart?
 	local part = model:FindFirstChild("RightHand") or model:FindFirstChild("Right Arm")
-	if part and part:IsA("BasePart") then return part end
+	if part and part:IsA("BasePart") then
+		return part
+	end
 	return nil
 end
 function InventoryController:EquipItem(selectedIndex: number)
 	-- clearEquippedOnPreview()
-	if not selectedIndex then return end
+	if not selectedIndex then
+		return
+	end
 	local slot = clientInventory.HandItems[selectedIndex]
-	if not slot or not slot.item then return end
+	if not slot or not slot.item then
+		return
+	end
 	local item = slot.item
 	local c = player.Character or player.CharacterAdded:Wait()
 	c.Archivable = true
-	if not item.Model or not c then return end
-	
+	if not item.Model or not c then
+		return
+	end
+
 	local hand = getRightHand(c)
-	if not hand then return end
+	if not hand then
+		return
+	end
 	if item.Type == "rod" then
 		UserController:SetSpeedToRun(false)
 	else
 		UserController:SetSpeedToRun(true)
 	end
-	local itemClone:Model = item.Model:Clone()
+	local itemClone: Model = item.Model:Clone()
 	-- make sure all parts are non-colliding for preview
 	for _, d in ipairs(itemClone:GetDescendants()) do
 		if d:IsA("BasePart") then
@@ -117,25 +132,34 @@ function InventoryController:EquipItem(selectedIndex: number)
 		end
 	end
 	-- itemClone.Parent = characterClone
-	
+
 	-- choose attach part
 	local attach: BasePart? = nil
 	if itemClone.PrimaryPart then
 		attach = itemClone.PrimaryPart
 	else
 		for _, d in ipairs(itemClone:GetDescendants()) do
-			if d:IsA("BasePart") then attach = d break end
+			if d:IsA("BasePart") then
+				attach = d
+				break
+			end
 		end
 	end
-	if not attach then return end
-	
+	if not attach then
+		return
+	end
+
 	-- create a Motor6D from hand to the item
 	local motor = Instance.new("Motor6D")
 	motor.Name = "ItemGrip"
 	motor.Part0 = hand
 	motor.Part1 = attach
-	motor.C0 = CFrame.new(attach.Size.X/4, -attach.Size.Z/2+ attach.Size.Z*0.2/2, -attach.Size.Y/2 + attach.Size.Y*0.2/2)
-	motor.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.pi/2, 0, 0)
+	motor.C0 = CFrame.new(
+		attach.Size.X / 4,
+		-attach.Size.Z / 2 + attach.Size.Z * 0.2 / 2,
+		-attach.Size.Y / 2 + attach.Size.Y * 0.2 / 2
+	)
+	motor.C1 = CFrame.new(0, 0, 0) * CFrame.Angles(math.pi / 2, 0, 0)
 	motor.Parent = hand
 
 	attach.Parent = hand
@@ -148,14 +172,14 @@ end
 function InventoryController:IsInventoryOpen(): boolean
 	return InventoryUI:GetVisible()
 end
-function InventoryController:SetSelectedItem(item:InventoryService.ItemType)
+function InventoryController:SetSelectedItem(item: InventoryService.ItemType)
 	SelectedItem = item
 end
-function InventoryController:GetSelectedItem():InventoryService.ItemType
+function InventoryController:GetSelectedItem(): InventoryService.ItemType
 	return SelectedItem
 end
 
-function InventoryController:AddItemToInventory(item:InventoryService.ItemType)
+function InventoryController:AddItemToInventory(item: InventoryService.ItemType)
 	local slot = clientInventory:AddItemToInventory(item)
 	print("Added item to inventory:", item, slot)
 	if slot and slot.uiSlot then

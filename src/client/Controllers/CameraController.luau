@@ -23,9 +23,13 @@ local function updateCamera(center: Vector3)
 	camera.CameraType = Enum.CameraType.Scriptable
 
 	local char = player.Character
-	if not char then return end
+	if not char then
+		return
+	end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	local targetCenter = center + centerOffset
 
@@ -44,8 +48,12 @@ local function updateCamera(center: Vector3)
 end
 
 function CameraController:LookAtCenter(center: Vector3, newDistance: number?, newAngle: Vector2?)
-	if newDistance then distance = newDistance end
-	if newAngle then angle = newAngle end
+	if newDistance then
+		distance = newDistance
+	end
+	if newAngle then
+		angle = newAngle
+	end
 
 	-- ✅ save original camera state once
 	if not originalCF then
@@ -53,7 +61,9 @@ function CameraController:LookAtCenter(center: Vector3, newDistance: number?, ne
 		originalType = camera.CameraType
 	end
 
-	if connection then connection:Disconnect() end
+	if connection then
+		connection:Disconnect()
+	end
 	connection = RunService.RenderStepped:Connect(function()
 		updateCamera(center)
 	end)

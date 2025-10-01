@@ -13,29 +13,29 @@ local InventoryService = require(ReplicatedStorage.Shared.Services.Inventory)
 local InventoryDragSystem = {}
 
 -- State variables
-local draggingItemData = nil  -- SlotData.item
-local originalSlotData = nil  -- SlotData
-local ghostImage = nil        -- ImageLabel
+local draggingItemData = nil -- SlotData.item
+local originalSlotData = nil -- SlotData
+local ghostImage = nil -- ImageLabel
 local offset = Vector2.new(0, 0)
 
 -- Must be initialized with inventory service
-local inventoryService:InventoryService.Type = nil
+local inventoryService: InventoryService.Type = nil
 
-function InventoryDragSystem:Init(service:InventoryService.Type)
+function InventoryDragSystem:Init(service: InventoryService.Type)
 	inventoryService = service
 	-- Mouse events
 	UserInputService.InputChanged:Connect(function(input)
 		if ghostImage and input.UserInputType == Enum.UserInputType.MouseMovement then
 			local mousePos = input.Position
-			ghostImage.Position = UDim2.fromOffset(mousePos.X , mousePos.Y )
+			ghostImage.Position = UDim2.fromOffset(mousePos.X, mousePos.Y)
 		end
 	end)
 
 	UserInputService.InputEnded:Connect(function(input)
 		if ghostImage and input.UserInputType == Enum.UserInputType.MouseButton1 then
-            print(inventoryService:GetAllInventoryItems())
+			print(inventoryService:GetAllInventoryItems())
 			self:EndDrag(input.Position)
-            print(inventoryService:GetAllInventoryItems())
+			print(inventoryService:GetAllInventoryItems())
 		end
 	end)
 end
@@ -69,20 +69,27 @@ end
 
 -- Called when player releases mouse
 function InventoryDragSystem:EndDrag(mousePos)
-	if not draggingItemData or not originalSlotData or not ghostImage then return end
+	if not draggingItemData or not originalSlotData or not ghostImage then
+		return
+	end
 	local mouseX, mouseY = mousePos.X, mousePos.Y
 
 	local function checkDrop(targetSlots)
 		for _, slot in pairs(targetSlots) do
 			local absPos, size = slot.uiSlot.AbsolutePosition, slot.uiSlot.AbsoluteSize
-			if mouseX >= absPos.X and mouseX <= absPos.X + size.X and
-			   mouseY >= absPos.Y and mouseY <= absPos.Y + size.Y then
-                inventoryService:MoveItem(
-                    originalSlotData == slot and "inventory" or (table.find(inventoryService.InventoryItems, originalSlotData) and "inventory" or "hand"),
-                    originalSlotData.slotId,
-                    targetSlots == inventoryService.InventoryItems and "inventory" or "hand",
-                    slot.slotId
-                )
+			if
+				mouseX >= absPos.X
+				and mouseX <= absPos.X + size.X
+				and mouseY >= absPos.Y
+				and mouseY <= absPos.Y + size.Y
+			then
+				inventoryService:MoveItem(
+					originalSlotData == slot and "inventory"
+						or (table.find(inventoryService.InventoryItems, originalSlotData) and "inventory" or "hand"),
+					originalSlotData.slotId,
+					targetSlots == inventoryService.InventoryItems and "inventory" or "hand",
+					slot.slotId
+				)
 				return true
 			end
 		end

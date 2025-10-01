@@ -1,13 +1,13 @@
 -- ReplicatedStorage/Models/RodItem.lua
 local BaseItem = require(game.ReplicatedStorage.Shared.Models.BaseItem)
 
-local RodItem = setmetatable({}, {__index = BaseItem})
+local RodItem = setmetatable({}, { __index = BaseItem })
 RodItem.__index = RodItem
 export type Type = BaseItem.Type & {
-    Type: string,
-    BasePower: number,
-    Health: number,
-    Luck: number,
+	Type: string,
+	BasePower: number,
+	Health: number,
+	Luck: number,
 }
 -- Constructor
 function RodItem.new(
@@ -19,7 +19,7 @@ function RodItem.new(
 	health: number,
 	luck: number,
 	model: Model?
-) : Type
+): Type
 	local self = BaseItem.new(name, icon, id, price, model)
 	setmetatable(self, RodItem)
 

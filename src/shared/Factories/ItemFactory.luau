@@ -21,7 +21,7 @@ export type Type = {
 		model: Model?
 	) -> ConsumableItem.Type,
 }
-local ItemFactory:Type = {}
+local ItemFactory: Type = {}
 
 function ItemFactory.createRod(
 	name: string,
@@ -36,13 +36,7 @@ function ItemFactory.createRod(
 	return RodItem.new(name, icon, id, price, basePower, health, luck, model)
 end
 
-function ItemFactory.createConsumable(
-	name: string,
-	icon: string,
-	id: number,
-	price: number,
-	model: Model?
-)
+function ItemFactory.createConsumable(name: string, icon: string, id: number, price: number, model: Model?)
 	return ConsumableItem.new(name, icon, id, price, model)
 end
 

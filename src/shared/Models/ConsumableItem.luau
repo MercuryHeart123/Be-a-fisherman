@@ -1,19 +1,13 @@
 -- ReplicatedStorage/Models/ConsumableItem.lua
 local BaseItem = require(game.ReplicatedStorage.Shared.Models.BaseItem)
-local ConsumableItem = setmetatable({}, {__index = BaseItem})
+local ConsumableItem = setmetatable({}, { __index = BaseItem })
 ConsumableItem.__index = ConsumableItem
 
 export type Type = BaseItem.Type & {
-    Type: string,
+	Type: string,
 }
 -- Constructor
-function ConsumableItem.new(
-	name: string,
-	icon: string,
-	id: number,
-	price: number,
-	model: Model?
-) : Type
+function ConsumableItem.new(name: string, icon: string, id: number, price: number, model: Model?): Type
 	local self = BaseItem.new(name, icon, id, price, model)
 	setmetatable(self, ConsumableItem)
 

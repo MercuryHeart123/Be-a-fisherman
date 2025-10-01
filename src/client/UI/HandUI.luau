@@ -17,16 +17,16 @@ handBar.Name = "HandBar"
 handBar.Size = UDim2.new(0, 230, 0, 80)
 handBar.AnchorPoint = Vector2.new(0.5, 1)
 handBar.Position = UDim2.new(0.5, 0, 1, -20)
-handBar.BackgroundColor3 = Color3.fromRGB(30,30,30)
+handBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 handBar.BackgroundTransparency = 0.2
 handBar.Parent = screenGui
 
-Instance.new("UICorner", handBar).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", handBar).CornerRadius = UDim.new(0, 12)
 local handBarPadding = Instance.new("UIPadding")
-handBarPadding.PaddingTop = UDim.new(0,8)
-handBarPadding.PaddingBottom = UDim.new(0,8)
-handBarPadding.PaddingLeft = UDim.new(0,8)
-handBarPadding.PaddingRight = UDim.new(0,8)
+handBarPadding.PaddingTop = UDim.new(0, 8)
+handBarPadding.PaddingBottom = UDim.new(0, 8)
+handBarPadding.PaddingLeft = UDim.new(0, 8)
+handBarPadding.PaddingRight = UDim.new(0, 8)
 handBarPadding.Parent = handBar
 
 local handBarLayout = Instance.new("UIListLayout")
@@ -34,11 +34,11 @@ handBarLayout.FillDirection = Enum.FillDirection.Horizontal
 handBarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 handBarLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 handBarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-handBarLayout.Padding = UDim.new(0,8)
+handBarLayout.Padding = UDim.new(0, 8)
 handBarLayout.Parent = handBar
 
 -- Keep track of hand slots
-local handSlots: {[number]: ImageButton} = {}
+local handSlots: { [number]: ImageButton } = {}
 
 -- Helper to create a hand slot
 local SLOT_COLOR = Color3.fromRGB(72, 255, 0)
@@ -57,7 +57,7 @@ local function makeSlot(parent: Instance, index: number)
 	return slot
 end
 
-function HandUI:BuildSlots(handItems:{InventoryService.SlotData})
+function HandUI:BuildSlots(handItems: { InventoryService.SlotData })
 	-- Inventory slots
 	for i, slotData in ipairs(handItems) do
 		local slot = makeSlot(handBar, i)

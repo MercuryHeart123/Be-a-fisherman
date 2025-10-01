@@ -8,15 +8,15 @@ local UserInputService = game:GetService("UserInputService")
 local InventoryService = require(ReplicatedStorage.Shared.Services.Inventory)
 
 local InventoryUI = {
-    characterClone = nil :: Model?,
+	characterClone = nil :: Model?,
 }
 
 local characterClone: Model?
 local cloneNeck: Motor6D?
 local defaultNeckC0: CFrame?
 local renderStepConnection: RBXScriptConnection?
-local MAX_HEAD_YAW = math.rad(40)   -- head can rotate left/right freely
-local MAX_BODY_YAW = math.rad(20)   -- body can rotate left/right (small assist)
+local MAX_HEAD_YAW = math.rad(40) -- head can rotate left/right freely
+local MAX_BODY_YAW = math.rad(20) -- body can rotate left/right (small assist)
 local BODY_TURN_SPEED = math.rad(8)
 
 local HEAD_YAW_RANGE = math.rad(55)
@@ -31,22 +31,22 @@ screenGui.Parent = playerGui
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 600, 0, 400)
 mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Parent = screenGui
 mainFrame.Visible = false -- start hidden
 
 local layout = Instance.new("UIListLayout")
 layout.FillDirection = Enum.FillDirection.Horizontal
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0,10)
+layout.Padding = UDim.new(0, 10)
 layout.Parent = mainFrame
 
 -- Left Frame
 local leftFrame = Instance.new("Frame")
-leftFrame.Size = UDim2.new(0.4,0,1,0)
-leftFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+leftFrame.Size = UDim2.new(0.4, 0, 1, 0)
+leftFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 leftFrame.Parent = mainFrame
-Instance.new("UICorner", leftFrame).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", leftFrame).CornerRadius = UDim.new(0, 12)
 
 -- Character preview in left panel
 local viewport = Instance.new("ViewportFrame")
@@ -67,35 +67,35 @@ viewport.CurrentCamera = previewCamera
 
 -- Right Frame
 local rightFrame = Instance.new("Frame")
-rightFrame.Size = UDim2.new(0.6,0,1,0)
-rightFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+rightFrame.Size = UDim2.new(0.6, 0, 1, 0)
+rightFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 rightFrame.Parent = mainFrame
 
-Instance.new("UICorner", rightFrame).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", rightFrame).CornerRadius = UDim.new(0, 12)
 local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0,10)
-padding.PaddingBottom = UDim.new(0,10)
-padding.PaddingLeft = UDim.new(0,10)
-padding.PaddingRight = UDim.new(0,10)
+padding.PaddingTop = UDim.new(0, 10)
+padding.PaddingBottom = UDim.new(0, 10)
+padding.PaddingLeft = UDim.new(0, 10)
+padding.PaddingRight = UDim.new(0, 10)
 padding.Parent = rightFrame
 
 local rightLayout = Instance.new("UIListLayout")
 rightLayout.FillDirection = Enum.FillDirection.Vertical
 rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-rightLayout.Padding = UDim.new(0,10)
+rightLayout.Padding = UDim.new(0, 10)
 rightLayout.Parent = rightFrame
 
 -- Inventory section
 local inventoryFrame = Instance.new("Frame")
-inventoryFrame.Size = UDim2.new(1,0,1,0)
+inventoryFrame.Size = UDim2.new(1, 0, 1, 0)
 inventoryFrame.BackgroundTransparency = 1
 inventoryFrame.Parent = rightFrame
 
 local grid = Instance.new("UIGridLayout")
 grid.FillDirection = Enum.FillDirection.Horizontal
 grid.SortOrder = Enum.SortOrder.LayoutOrder
-grid.CellPadding = UDim2.new(0,0,0,0)
-grid.CellSize = UDim2.new(1/5,0,1/5,0)
+grid.CellPadding = UDim2.new(0, 0, 0, 0)
+grid.CellSize = UDim2.new(1 / 5, 0, 1 / 5, 0)
 grid.Parent = inventoryFrame
 
 -- Colors
@@ -113,7 +113,7 @@ local function makeSlot(parent: Instance, index: number): ImageButton
 end
 
 -- Build all slots given inventory & hand items
-function InventoryUI:BuildSlots(inventoryItems:{InventoryService.SlotData})
+function InventoryUI:BuildSlots(inventoryItems: { InventoryService.SlotData })
 	-- Inventory slots
 	for i, slotData in ipairs(inventoryItems) do
 		local slot = makeSlot(inventoryFrame, i)
@@ -122,7 +122,7 @@ function InventoryUI:BuildSlots(inventoryItems:{InventoryService.SlotData})
 end
 
 -- Update visual of a single slot
-function InventoryUI:UpdateSlot(slotData : InventoryService.SlotData)
+function InventoryUI:UpdateSlot(slotData: InventoryService.SlotData)
 	if slotData.uiSlot then
 		slotData.uiSlot.Image = slotData.item and slotData.item.Icon or ""
 	end
@@ -153,12 +153,14 @@ function InventoryUI:SetVisible(visible: boolean)
 end
 
 function InventoryUI:GetVisible(): boolean
-    return mainFrame.Visible
+	return mainFrame.Visible
 end
 
 local function getHumanoidRoot(model: Model): BasePart?
 	local hrp = model:FindFirstChild("HumanoidRootPart")
-	if hrp and hrp:IsA("BasePart") then return hrp end
+	if hrp and hrp:IsA("BasePart") then
+		return hrp
+	end
 	return nil
 end
 
@@ -238,7 +240,6 @@ if not renderStepConnection then
 	end)
 end
 
-
 function InventoryUI:SetupCharacterPreview(pl: Player)
 	clearCharacterClone()
 	local c = pl.Character or pl.CharacterAdded:Wait()
@@ -251,13 +252,15 @@ function InventoryUI:SetupCharacterPreview(pl: Player)
 			inst:Destroy()
 		end
 	end
-    
+
 	clone.Parent = worldModel
 	characterClone = clone
 	InventoryUI.characterClone = clone
 
 	hrp = getHumanoidRoot(clone)
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	for _, inst in ipairs(clone:GetDescendants()) do
 		if inst:IsA("BasePart") then
@@ -276,11 +279,11 @@ function InventoryUI:SetupCharacterPreview(pl: Player)
 
 	-- camera placement: slightly above and in front looking at upper body
 	local lookAt = hrp.Position + Vector3.new(0, 0, 0)
-    local camDistance = 24
+	local camDistance = 24
 
-    -- Camera 180° around Y
-    local camOffset = Vector3.new(0, 0, -camDistance) -- negative Z
-    previewCamera.CFrame = CFrame.new(lookAt + camOffset, lookAt)
+	-- Camera 180° around Y
+	local camOffset = Vector3.new(0, 0, -camDistance) -- negative Z
+	previewCamera.CFrame = CFrame.new(lookAt + camOffset, lookAt)
 	previewCamera.Parent = worldModel
 end
 

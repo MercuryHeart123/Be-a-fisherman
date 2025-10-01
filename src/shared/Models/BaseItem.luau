@@ -2,18 +2,17 @@
 local BaseItem = {}
 BaseItem.__index = BaseItem
 
-
 export type Type = {
-    Name: string,
-    Icon: string,
-    Id: number,
-    Price: number,
-    Model: Model?,
-    Type: string?,
+	Name: string,
+	Icon: string,
+	Id: number,
+	Price: number,
+	Model: Model?,
+	Type: string?,
 }
 -- Constructor
 -- model is optional
-function BaseItem.new(name: string, icon: string, id: number, price: number, model: Model?):Type
+function BaseItem.new(name: string, icon: string, id: number, price: number, model: Model?): Type
 	local self = setmetatable({}, BaseItem)
 	self.Name = name
 	self.Icon = icon
