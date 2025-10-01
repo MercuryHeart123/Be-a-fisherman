@@ -8,6 +8,8 @@ export type Type = BaseItem.Type & {
 	BasePower: number,
 	Health: number,
 	Luck: number,
+	CritChance: number,
+	CritMultiplier: number,
 }
 -- Constructor
 function RodItem.new(
@@ -18,7 +20,9 @@ function RodItem.new(
 	basePower: number,
 	health: number,
 	luck: number,
-	model: Model?
+	model: Model?,
+	critChance: number?,
+	critMultiplier: number?
 ): Type
 	local self = BaseItem.new(name, icon, id, price, model)
 	setmetatable(self, RodItem)
@@ -27,6 +31,8 @@ function RodItem.new(
 	self.BasePower = basePower
 	self.Health = health
 	self.Luck = luck
+	self.CritChance = critChance or 0
+	self.CritMultiplier = critMultiplier or 1.5
 
 	return self
 end

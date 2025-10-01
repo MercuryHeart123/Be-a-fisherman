@@ -10,7 +10,9 @@ export type Type = {
 		basePower: number,
 		health: number,
 		luck: number,
-		model: Model?
+		model: Model?,
+		critChance: number?,
+		critMultiplier: number?
 	) -> RodItem.Type,
 
 	createConsumable: (
@@ -31,9 +33,11 @@ function ItemFactory.createRod(
 	basePower: number,
 	health: number,
 	luck: number,
-	model: Model?
+	model: Model?,
+	critChance: number?,
+	critMultiplier: number?
 )
-	return RodItem.new(name, icon, id, price, basePower, health, luck, model)
+	return RodItem.new(name, icon, id, price, basePower, health, luck, model, critChance, critMultiplier)
 end
 
 function ItemFactory.createConsumable(name: string, icon: string, id: number, price: number, model: Model?)

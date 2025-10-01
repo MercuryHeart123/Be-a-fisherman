@@ -219,9 +219,11 @@ local function handleMinigameInput(
 
 			-- 2) เช็ค Critical Hit (10% โอกาส)
 			local isCrit = false
-			if math.random(1, 100) <= 50 then -- 10% chance
+			local roll = math.random()
+			print("CritChance:", rod.CritChance, "Roll:", roll)
+			if roll <= rod.CritChance then -- 10% chance
 				isCrit = true
-				damage = damage * 2
+				damage = damage * rod.CritMultiplier
 			end
 			print("Damage:", damage, "Crit:", isCrit)
 

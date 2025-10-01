@@ -32,7 +32,9 @@ function InventoryController:Init()
 		10,
 		5,
 		2,
-		ReplicatedStorage.Assets.Models:WaitForChild("FishingRodModel")
+		ReplicatedStorage.Assets.Models:WaitForChild("FishingRodModel"),
+		0.1,
+		2.0
 	)
 	clientInventory:AddItemByIndex("inventory", 1, tempRod)
 	InventoryUI:UpdateAllSlots(clientInventory.InventoryItems, clientInventory.HandItems)
