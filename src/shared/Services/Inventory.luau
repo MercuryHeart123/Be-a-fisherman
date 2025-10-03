@@ -54,11 +54,6 @@ function InventoryService.new(itemFactory: ItemFactory.Type, moneyValue: IntValu
 		table.insert(self.HandItems, { slotId = i, item = nil })
 	end
 
-    self.HandItems = {} :: {SlotData}
-    for i = 1, 3 do
-        table.insert(self.HandItems, { slotId = i, item = nil })
-    end
-
 	self.MoneyValue = moneyValue
 	
 	return self
