@@ -1,140 +1,188 @@
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local InventoryService = require(ReplicatedStorage.Shared.Services.Inventory)
 
-local InventoryUI = {
-	characterClone = nil :: Model?,
-}
+-- Declare UI elements here so they can be accessed by all functions in the module
+local screenGui: ScreenGui
+local mainFrame: Frame
+local inventoryFrame: Frame
+local handFrame: Frame -- Assuming you will create this later
+local viewport: ViewportFrame
+local worldModel: WorldModel
+local previewCamera: Camera
+
+local uiSlotsInventory = {}
+local uiSlotsHand = {}
 
 local characterClone: Model?
 local cloneNeck: Motor6D?
 local defaultNeckC0: CFrame?
 local renderStepConnection: RBXScriptConnection?
-local MAX_HEAD_YAW = math.rad(40) -- head can rotate left/right freely
-local MAX_BODY_YAW = math.rad(20) -- body can rotate left/right (small assist)
-local BODY_TURN_SPEED = math.rad(8)
 
+-- Constants for head tracking
 local HEAD_YAW_RANGE = math.rad(55)
 local HEAD_PITCH_RANGE = math.rad(35)
-local currentBodyYaw = 0 -- relative to default facing
 
-local hrp -- set in SetupCharacterPreview
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "InventoryUI"
-screenGui.Parent = playerGui
+local InventoryUI = {}
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 600, 0, 400)
-mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-mainFrame.Parent = screenGui
-mainFrame.Visible = false -- start hidden
+function InventoryUI:Create()
+	if screenGui then
+		return
+	end
 
-local layout = Instance.new("UIListLayout")
-layout.FillDirection = Enum.FillDirection.Horizontal
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 10)
-layout.Parent = mainFrame
+	screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "InventoryUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Left Frame
-local leftFrame = Instance.new("Frame")
-leftFrame.Size = UDim2.new(0.4, 0, 1, 0)
-leftFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-leftFrame.Parent = mainFrame
-Instance.new("UICorner", leftFrame).CornerRadius = UDim.new(0, 12)
+	mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainFrame"
+	mainFrame.Size = UDim2.new(0, 600, 0, 400) -- ลดขนาดความกว้างเป็น 600 และความสูงเป็น 400
+	mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200) -- ปรับตำแหน่งกึ่งกลางตามขนาดใหม่ (0.5 - (600/2), 0.5 - (400/2))
+	mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.Visible = false
+	mainFrame.Parent = screenGui
 
--- Character preview in left panel
-local viewport = Instance.new("ViewportFrame")
-viewport.Name = "CharacterPreview"
-viewport.Size = UDim2.new(1, -20, 1, -20)
-viewport.Position = UDim2.new(0, 10, 0, 10)
-viewport.BackgroundTransparency = 1
-viewport.Ambient = Color3.fromRGB(200, 200, 200)
-viewport.LightDirection = Vector3.new(-1, -1, -1)
-viewport.Parent = leftFrame
+	-- Use a layout to manage left and right frames automatically
+	local mainLayout = Instance.new("UIListLayout")
+	mainLayout.FillDirection = Enum.FillDirection.Horizontal
+	mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	mainLayout.Parent = mainFrame
 
-local worldModel = Instance.new("WorldModel")
-worldModel.Parent = viewport
+	-- ===== All UI creation code is moved inside Create() function =====
 
-local previewCamera = Instance.new("Camera")
-previewCamera.FieldOfView = 20
-viewport.CurrentCamera = previewCamera
+	-- Left Frame (Character Preview)
+	local leftFrame = Instance.new("Frame")
+	leftFrame.LayoutOrder = 1
+	leftFrame.Size = UDim2.new(0.4, 0, 1, 0)
+	leftFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	leftFrame.BorderSizePixel = 0
+	leftFrame.Parent = mainFrame
+	Instance.new("UICorner", leftFrame).CornerRadius = UDim.new(0, 12)
 
--- Right Frame
-local rightFrame = Instance.new("Frame")
-rightFrame.Size = UDim2.new(0.6, 0, 1, 0)
-rightFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-rightFrame.Parent = mainFrame
+	-- Character preview in left panel
+	viewport = Instance.new("ViewportFrame")
+	viewport.Name = "CharacterPreview"
+	viewport.Size = UDim2.new(1, -20, 1, -20)
+	viewport.Position = UDim2.new(0, 10, 0, 10)
+	viewport.BackgroundTransparency = 1
+	viewport.Ambient = Color3.fromRGB(200, 200, 200)
+	viewport.LightDirection = Vector3.new(-1, -1, -1)
+	viewport.Parent = leftFrame
 
-Instance.new("UICorner", rightFrame).CornerRadius = UDim.new(0, 12)
-local padding = Instance.new("UIPadding")
-padding.PaddingTop = UDim.new(0, 10)
-padding.PaddingBottom = UDim.new(0, 10)
-padding.PaddingLeft = UDim.new(0, 10)
-padding.PaddingRight = UDim.new(0, 10)
-padding.Parent = rightFrame
+	worldModel = Instance.new("WorldModel")
+	worldModel.Parent = viewport
 
-local rightLayout = Instance.new("UIListLayout")
-rightLayout.FillDirection = Enum.FillDirection.Vertical
-rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-rightLayout.Padding = UDim.new(0, 10)
-rightLayout.Parent = rightFrame
+	previewCamera = Instance.new("Camera")
+	previewCamera.FieldOfView = 20
+	viewport.CurrentCamera = previewCamera
+	previewCamera.Parent = worldModel -- Parent camera to WorldModel as well
 
--- Inventory section
-local inventoryFrame = Instance.new("Frame")
-inventoryFrame.Size = UDim2.new(1, 0, 1, 0)
-inventoryFrame.BackgroundTransparency = 1
-inventoryFrame.Parent = rightFrame
+	-- Right Frame (Inventory)
+	local rightFrame = Instance.new("Frame")
+	rightFrame.LayoutOrder = 2
+	rightFrame.Size = UDim2.new(0.6, 0, 1, 0)
+	rightFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	rightFrame.BorderSizePixel = 0
+	rightFrame.Parent = mainFrame
 
-local grid = Instance.new("UIGridLayout")
-grid.FillDirection = Enum.FillDirection.Horizontal
-grid.SortOrder = Enum.SortOrder.LayoutOrder
-grid.CellPadding = UDim2.new(0, 0, 0, 0)
-grid.CellSize = UDim2.new(1 / 5, 0, 1 / 5, 0)
-grid.Parent = inventoryFrame
+	Instance.new("UICorner", rightFrame).CornerRadius = UDim.new(0, 12)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 10)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = rightFrame
 
--- Colors
-local SLOT_COLOR = Color3.fromRGB(72, 255, 0)
+	-- Inventory section
+	inventoryFrame = Instance.new("Frame")
+	inventoryFrame.Size = UDim2.new(1, 0, 1, 0) -- Adjust size as needed
+	inventoryFrame.BackgroundTransparency = 1
+	inventoryFrame.Parent = rightFrame
 
--- Helper to make a slot button
-local function makeSlot(parent: Instance, index: number): ImageButton
-	local slot = Instance.new("ImageButton")
-	slot.Name = "InventorySlot" .. tostring(index)
-	slot.BackgroundColor3 = SLOT_COLOR
-	slot.Image = ""
-	slot.Parent = parent
-	slot.ScaleType = Enum.ScaleType.Fit
-	return slot
-end
+	-- ในไฟล์ InventoryUI.lua ภายในฟังก์ชัน InventoryUI:Create()
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.new(0, 60, 0, 60) -- ปรับขนาด Cell Size ให้เล็กลงเล็กน้อย
+	grid.CellPadding = UDim2.new(0, 4, 0, 4) -- ปรับ Cell Padding ให้เล็กลง
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.Parent = inventoryFrame
 
--- Build all slots given inventory & hand items
-function InventoryUI:BuildSlots(inventoryItems: { InventoryService.SlotData })
-	-- Inventory slots
-	for i, slotData in ipairs(inventoryItems) do
-		local slot = makeSlot(inventoryFrame, i)
-		slotData.uiSlot = slot -- link UI button to SlotData
+	-- Ensure RenderStepped is connected for head tracking
+	if not renderStepConnection then
+		renderStepConnection = RunService.RenderStepped:Connect(function()
+			self:applyHeadTracking()
+		end)
 	end
 end
 
--- Update visual of a single slot
+function InventoryUI:BuildSlots(inventoryData, slotType: "inventory" | "hand")
+	-- Ensure UI is created before building slots
+	if not screenGui then
+		self:Create()
+	end
+
+	local targetFrame = (slotType == "inventory") and inventoryFrame or handFrame
+	if not targetFrame then
+		warn("Target frame for slot type '" .. slotType .. "' not found!")
+		return
+	end
+
+	local targetTable = (slotType == "inventory") and uiSlotsInventory or uiSlotsHand
+
+	for _, button in ipairs(targetTable) do
+		button:Destroy()
+	end
+	table.clear(targetTable)
+
+	for i, slotData in ipairs(inventoryData) do
+		local newSlotButton = Instance.new("ImageButton")
+		newSlotButton.Name = slotType .. "_Slot_" .. i
+		newSlotButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		newSlotButton.BackgroundTransparency = 0.5
+		-- Size is now controlled by the UIGridLayout
+		newSlotButton.Parent = targetFrame
+		Instance.new("UICorner", newSlotButton).CornerRadius = UDim.new(0, 8)
+
+		newSlotButton:SetAttribute("SlotId", i)
+		newSlotButton:SetAttribute("SlotType", slotType)
+
+		targetTable[i] = newSlotButton
+		slotData.uiSlot = newSlotButton -- Link UI button to SlotData
+	end
+end
+
 function InventoryUI:UpdateSlot(slotData: InventoryService.SlotData)
-	if slotData.uiSlot then
+	if slotData and slotData.uiSlot then
 		slotData.uiSlot.Image = slotData.item and slotData.item.Icon or ""
 	end
 end
 
--- Update all slots
-function InventoryUI:UpdateAllSlots(inventoryItems, handItems)
-	for _, slot in ipairs(inventoryItems) do
-		self:UpdateSlot(slot)
+function InventoryUI:UpdateAllSlots(newInventoryData, newHandData)
+	print("UI: Updating all slots with new data...")
+
+	for i, uiSlotButton in ipairs(uiSlotsInventory) do
+		local correspondingData = newInventoryData[i]
+		if correspondingData and correspondingData.item then
+			uiSlotButton.Image = correspondingData.item.Icon
+		else
+			uiSlotButton.Image = ""
+		end
 	end
-	for _, slot in ipairs(handItems) do
-		self:UpdateSlot(slot)
+
+	-- Handle hand slots if they exist
+	if newHandData and uiSlotsHand then
+		for i, uiSlotButton in ipairs(uiSlotsHand) do
+			local correspondingData = newHandData[i]
+			if correspondingData and correspondingData.item then
+				uiSlotButton.Image = correspondingData.item.Icon
+			else
+				uiSlotButton.Image = ""
+			end
+		end
 	end
 end
 
@@ -144,36 +192,32 @@ local function resetHeadTracking()
 	end
 end
 
--- Set inventory visibility
 function InventoryUI:SetVisible(visible: boolean)
-	mainFrame.Visible = visible
-	if not visible then
-		resetHeadTracking()
+	if mainFrame then
+		mainFrame.Visible = visible
 	end
 end
 
 function InventoryUI:GetVisible(): boolean
-	return mainFrame.Visible
+	if mainFrame then
+		return mainFrame.Visible
+	end
+	return false
 end
 
+-- Helper functions for character preview
 local function getHumanoidRoot(model: Model): BasePart?
-	local hrp = model:FindFirstChild("HumanoidRootPart")
-	if hrp and hrp:IsA("BasePart") then
-		return hrp
-	end
-	return nil
+	return model:FindFirstChild("HumanoidRootPart")
 end
 
 local function findNeckJoint(model: Model): Motor6D?
-	for _, inst in ipairs(model:GetDescendants()) do
-		if inst:IsA("Motor6D") and inst.Name == "Neck" then
-			return inst
-		end
-	end
-	return nil
+	return model:FindFirstChild("Head", true):FindFirstChild("Neck", true)
 end
 
 local function getMouseOffsetForViewport(): Vector2?
+	if not viewport then
+		return nil
+	end
 	local size = viewport.AbsoluteSize
 	if size.X <= 0 or size.Y <= 0 then
 		return nil
@@ -181,7 +225,6 @@ local function getMouseOffsetForViewport(): Vector2?
 
 	local mouseLocation = UserInputService:GetMouseLocation()
 	local topLeft = viewport.AbsolutePosition
-
 	local u = (mouseLocation.X - topLeft.X) / size.X
 	local v = (mouseLocation.Y - topLeft.Y) / size.Y
 
@@ -189,8 +232,8 @@ local function getMouseOffsetForViewport(): Vector2?
 	return (clamped - Vector2.new(0.5, 0.5)) * 2
 end
 
-local function applyHeadTracking()
-	if not mainFrame.Visible or not cloneNeck or not defaultNeckC0 then
+function InventoryUI:applyHeadTracking()
+	if not mainFrame or not mainFrame.Visible or not cloneNeck or not defaultNeckC0 then
 		return
 	end
 
@@ -200,27 +243,9 @@ local function applyHeadTracking()
 		return
 	end
 
-	local desiredYaw = offset.X * HEAD_YAW_RANGE
+	local yaw = offset.X * HEAD_YAW_RANGE
 	local pitch = offset.Y * HEAD_PITCH_RANGE
-
-	-- Head yaw stays inside range
-	local headYaw = math.clamp(desiredYaw - currentBodyYaw, -MAX_HEAD_YAW, MAX_HEAD_YAW)
-
-	-- If head tries to look past limit → shift body (within its own limit)
-	if headYaw == MAX_HEAD_YAW and desiredYaw > currentBodyYaw + MAX_HEAD_YAW then
-		currentBodyYaw = math.clamp(currentBodyYaw + BODY_TURN_SPEED, -MAX_BODY_YAW, MAX_BODY_YAW)
-	elseif headYaw == -MAX_HEAD_YAW and desiredYaw < currentBodyYaw - MAX_HEAD_YAW then
-		currentBodyYaw = math.clamp(currentBodyYaw - BODY_TURN_SPEED, -MAX_BODY_YAW, MAX_BODY_YAW)
-	end
-
-	-- Apply head rotation
-	cloneNeck.C0 = defaultNeckC0 * CFrame.Angles(-pitch, headYaw, 0)
-
-	-- Apply small body rotation
-	if hrp then
-		local pos = hrp.Position
-		hrp.CFrame = CFrame.new(pos) * CFrame.Angles(0, currentBodyYaw, 0)
-	end
+	cloneNeck.C0 = defaultNeckC0 * CFrame.Angles(-pitch, -yaw, 0)
 end
 
 local function clearCharacterClone()
@@ -228,63 +253,65 @@ local function clearCharacterClone()
 		resetHeadTracking()
 		characterClone:Destroy()
 		characterClone = nil
-		InventoryUI.characterClone = nil
 	end
 	cloneNeck = nil
 	defaultNeckC0 = nil
 end
 
-if not renderStepConnection then
-	renderStepConnection = RunService.RenderStepped:Connect(function()
-		applyHeadTracking()
-	end)
-end
-
 function InventoryUI:SetupCharacterPreview(pl: Player)
+	-- Ensure UI is created first
+	if not worldModel then
+		warn("Cannot setup character preview because UI has not been created.")
+		return
+	end
+
 	clearCharacterClone()
 	local c = pl.Character or pl.CharacterAdded:Wait()
 	c.Archivable = true
 
-	local clone = c:Clone()
-	-- strip scripts for safety
-	for _, inst in ipairs(clone:GetDescendants()) do
+	local newClone = c:Clone()
+	-- Strip scripts and other unwanted instances
+	for _, inst in ipairs(newClone:GetDescendants()) do
 		if inst:IsA("Script") or inst:IsA("LocalScript") then
 			inst:Destroy()
 		end
 	end
 
-	clone.Parent = worldModel
-	characterClone = clone
-	InventoryUI.characterClone = clone
+	newClone.Parent = worldModel
+	characterClone = newClone
 
-	hrp = getHumanoidRoot(clone)
+	local hrp = getHumanoidRoot(newClone)
 	if not hrp then
 		return
 	end
 
-	for _, inst in ipairs(clone:GetDescendants()) do
-		if inst:IsA("BasePart") then
-			inst.Anchored = (inst.Name == "HumanoidRootPart") -- only anchor HRP
-			inst.CanCollide = false
-			inst.AssemblyLinearVelocity = Vector3.zero
-			inst.AssemblyAngularVelocity = Vector3.zero
+	hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
+
+	-- Make sure everything is unanchored except the HRP and non-collidable
+	for _, part in ipairs(newClone:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored = (part == hrp)
+			part.CanCollide = false
 		end
 	end
 
-	cloneNeck = findNeckJoint(clone)
+	cloneNeck = findNeckJoint(newClone)
 	if cloneNeck then
 		defaultNeckC0 = cloneNeck.C0
 		resetHeadTracking()
 	end
 
-	-- camera placement: slightly above and in front looking at upper body
-	local lookAt = hrp.Position + Vector3.new(0, 0, 0)
-	local camDistance = 24
+	-- Camera placement
+	local lookAt = hrp.Position
 
-	-- Camera 180° around Y
-	local camOffset = Vector3.new(0, 0, -camDistance) -- negative Z
-	previewCamera.CFrame = CFrame.new(lookAt + camOffset, lookAt)
-	previewCamera.Parent = worldModel
+	-- ระยะห่างของกล้อง (เพิ่มค่านี้เพื่อให้ซูมออก)
+	local camDistance = 25 -- << ลองปรับค่านี้ดูได้ครับ ถ้าอยากให้ไกลขึ้นอีกก็เพิ่มค่านี้
+
+	-- ตำแหน่งของกล้อง: เริ่มจากจุดที่มอง (lookAt) แล้วขยับขึ้นเล็กน้อย และถอยหลังตามระยะ camDistance
+	local camPosition = lookAt + Vector3.new(0, 1, camDistance)
+
+	-- ตั้งค่า CFrame ของกล้อง
+	previewCamera.CFrame = CFrame.new(camPosition, lookAt)
 end
 
 return InventoryUI

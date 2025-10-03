@@ -1,13 +1,10 @@
--- InventoryService.lua
 local ItemFactory = require(game.ReplicatedStorage.Shared.Factories.ItemFactory)
 local RodItem = require(game.ReplicatedStorage.Shared.Models.RodItem)
 local ConsumableItem = require(game.ReplicatedStorage.Shared.Models.ConsumableItem)
-
--- Define the full InventoryService type (methods + fields)
 export type ItemType = RodItem.Type | ConsumableItem.Type | nil
 export type SlotData = {
 	slotId: number,
-	uiSlot: ImageButton?, -- Reference to the UI slot, optional
+	uiSlot: ImageButton?, 
 	item: ItemType,
 }
 
@@ -15,9 +12,9 @@ export type Type = {
 	-- Methods
 	new: (itemFactory: ItemFactory.Type) -> Type,
 	AddRod: (self: Type, name: string, price: number) -> (),
-	AddConsumable: (self: Type, name: string, price: number) -> (), -- example extra method
-	GetAllInventoryItems: (self: Type) -> { SlotData }, -- example extra method
-	GetAllHandItems: (self: Type) -> { SlotData }, -- example extra method
+	AddConsumable: (self: Type, name: string, price: number) -> (),
+	GetAllInventoryItems: (self: Type) -> { SlotData }, 
+	GetAllHandItems: (self: Type) -> { SlotData }, 
 	MoveItem: (
 		self: Type,
 		fromType: "inventory" | "hand",
@@ -37,13 +34,13 @@ export type Type = {
 	InventoryItems: { SlotData },
 	HandItems: { SlotData },
 	EquippedIndex: number?,
+	MoneyValue: IntValue, 
 }
 
 local InventoryService: Type = {}
 InventoryService.__index = InventoryService
 
--- Constructor
-function InventoryService.new(itemFactory: ItemFactory.Type): Type
+function InventoryService.new(itemFactory: ItemFactory.Type, moneyValue: IntValue): Type
 	local self: Type = setmetatable({}, InventoryService)
 	self.ItemFactory = itemFactory
 
@@ -57,10 +54,16 @@ function InventoryService.new(itemFactory: ItemFactory.Type): Type
 		table.insert(self.HandItems, { slotId = i, item = nil })
 	end
 
+    self.HandItems = {} :: {SlotData}
+    for i = 1, 3 do
+        table.insert(self.HandItems, { slotId = i, item = nil })
+    end
+
+	self.MoneyValue = moneyValue
+	
 	return self
 end
 
--- Methods
 function InventoryService:AddRod(name: string, price: number)
 	print("[InventoryService] Adding rod:", name, price)
 	local rod = self.ItemFactory.createRod(name, "icon.png", 1, price, 10, 5, 2)
@@ -80,34 +83,24 @@ function InventoryService:GetAllHandItems()
 	return self.HandItems
 end
 
-function InventoryService:MoveItem(
-	fromType: "inventory" | "hand",
-	fromIndex: number,
-	toType: "inventory" | "hand",
-	toIndex: number
-)
-	-- Select the correct source and destination tables
+
+function InventoryService:AddMoney(amount: number)
+    self.MoneyValue.Value += amount 
+end
+
+function InventoryService:MoveItem(fromType: "inventory" | "hand", fromIndex: number, toType: "inventory" | "hand", toIndex: number)
 	local fromList = if fromType == "inventory" then self.InventoryItems else self.HandItems
 	local toList = if toType == "inventory" then self.InventoryItems else self.HandItems
-	-- Validate indexes
+
 	if not fromList[fromIndex] or not toList[toIndex] then
-		warn(`[InventoryService] Invalid slot index (from {fromType}:{fromIndex} → to {toType}:{toIndex})`)
+		warn(`[InventoryService] Invalid slot index during MoveItem`)
 		return
 	end
 
-	local fromSlot = fromList[fromIndex]
-	local toSlot = toList[toIndex]
-
-	-- If both have items, swap them
-	if fromSlot.item and toSlot.item then
-		fromSlot.uiSlot.Image, toSlot.uiSlot.Image = toSlot.item.Icon, fromSlot.item.Icon
-		fromSlot.item, toSlot.item = toSlot.item, fromSlot.item
-	else
-		-- Otherwise, move item
-		toSlot.item = fromSlot.item
-		toSlot.uiSlot.Image = fromSlot.item.Icon
-		fromSlot.item = nil
-	end
+	-- === นี่คือ Logic การสลับที่ถูกต้องและแน่นอนที่สุด ===
+	-- สลับข้อมูล .item ระหว่างช่องต้นทางและปลายทาง
+	fromList[fromIndex].item, toList[toIndex].item = toList[toIndex].item, fromList[fromIndex].item
+    print("[InventoryService] Swapped items between slots.")
 end
 
 function InventoryService:AddItemByIndex(
@@ -115,16 +108,13 @@ function InventoryService:AddItemByIndex(
 	index: number,
 	item: RodItem.Type | ConsumableItem.Type
 )
-	-- Select the correct target list
 	local targetList = if slotType == "inventory" then self.InventoryItems else self.HandItems
 
-	-- Validate index
 	if not targetList[index] then
 		warn(`[InventoryService] Invalid slot index {slotType}:{index}`)
 		return
 	end
 
-	-- Place item in the specified slot
 	targetList[index].item = item
 end
 
@@ -133,7 +123,6 @@ function InventoryService:AddItemToInventory(item: ItemType)
 		warn("[InventoryService] Cannot add nil item to inventory")
 		return nil
 	end
-	-- Find the first empty slot
 	for _, slot in ipairs(self.InventoryItems) do
 		if not slot.item then
 			slot.item = item
@@ -142,6 +131,32 @@ function InventoryService:AddItemToInventory(item: ItemType)
 	end
 	warn("[InventoryService] Inventory full, cannot add item:", item.Name)
 	return nil
+end
+
+-- Method to calculate the total value of inventory items
+function InventoryService:CalculateTotalInventoryValue(): number
+    local totalValue = 0
+    for _, slot in ipairs(self.InventoryItems) do
+        if slot.item then
+            totalValue += slot.item.Price or 0
+        end
+    end
+    return totalValue
+end
+
+function InventoryService:SellAllItems()
+    local totalValue = self:CalculateTotalInventoryValue()
+
+    for _, slot in ipairs(self.InventoryItems) do
+        slot.item = nil
+    end
+
+    if totalValue > 0 then
+        self:AddMoney(totalValue)
+    end
+    
+    print("[InventoryService] Sold all items for:", totalValue)
+    return totalValue
 end
 
 return InventoryService
