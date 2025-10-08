@@ -466,6 +466,7 @@ local function destroyPathCircles()
 	end
 	table.clear(pathCircles)
 end
+
 function FishingController:finishMinigame(fish: FishItem.Fish?, bait: Part?)
 	ContextActionService:UnbindAction("MiniGameSpace") -- ปลด bind space กลับมากระโดดได้
 	destroyDebugBorder()
@@ -488,7 +489,7 @@ function FishingController:finishMinigame(fish: FishItem.Fish?, bait: Part?)
 	if fish then
 		-- Example: add to inventory
 		print("Caught fish:", fish)
-		InventoryController:AddItemToInventory(fish)
+		Remotes.CaughtFish():FireServer(fish)
 	end
 	-- if success and miniResultFish then
 	-- 	-- addFishToInventory(miniResultFish)

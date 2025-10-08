@@ -17,15 +17,15 @@ end
 
 -- Utility: create or fetch a RemoteFunction
 local function getOrCreateRemoteFunction(name: string): RemoteFunction
-    local existing = ReplicatedStorage:FindFirstChild(name)
-    if existing and existing:IsA("RemoteFunction") then
-        return existing
-    end
+	local existing = ReplicatedStorage:FindFirstChild(name)
+	if existing and existing:IsA("RemoteFunction") then
+		return existing
+	end
 
-    local remote = Instance.new("RemoteFunction")
-    remote.Name = name
-    remote.Parent = ReplicatedStorage
-    return remote
+	local remote = Instance.new("RemoteFunction")
+	remote.Name = name
+	remote.Parent = ReplicatedStorage
+	return remote
 end
 
 -- Server calls this once on startup
@@ -35,6 +35,7 @@ function Remotes:Init()
 	getOrCreateRemoteEvent("MoveInventoryItem")
 	getOrCreateRemoteEvent("InventoryUpdated")
 	getOrCreateRemoteEvent("SellAllItems")
+	getOrCreateRemoteEvent("CaughtFish")
 end
 
 -- Client/server both use these to always get live references
@@ -56,6 +57,10 @@ end
 
 function Remotes.SellAllItems(): RemoteEvent
 	return ReplicatedStorage:WaitForChild("SellAllItems") :: RemoteEvent
+end
+
+function Remotes.CaughtFish(): RemoteEvent
+	return ReplicatedStorage:WaitForChild("CaughtFish") :: RemoteEvent
 end
 
 return Remotes
