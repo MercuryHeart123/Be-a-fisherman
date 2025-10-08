@@ -312,4 +312,11 @@ function InventoryUI:SetupCharacterPreview(pl: Player)
 	previewCamera.CFrame = CFrame.new(camPosition, lookAt)
 end
 
+function InventoryUI:GetSellAllButton()
+	if mainFrame then
+		return mainFrame:FindFirstChild("SellAllButton")
+	end
+	return nil
+end
+
 return InventoryUI

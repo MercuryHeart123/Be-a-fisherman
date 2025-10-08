@@ -7,6 +7,7 @@ local HandUI = require(script.Parent.Parent.UI.HandUI)
 local DragSystem = require(script.Parent.Parent.UI.InventoryDragSystem)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local InventoryService = require(ReplicatedStorage.Shared.Services.Inventory)
+local SelectiveSellUI = require(script.Parent.Parent.UI.SelectiveSellUI)
 
 -- Define the type explicitly for clarity
 export type ItemType = InventoryService.ItemType
@@ -37,6 +38,7 @@ function InventoryController:Init()
 
 	InventoryUI:Create()
 	HandUI:Create()
+	SelectiveSellUI:Create()
 
 	ServerInventoryData = getInventoryDataRemote:InvokeServer()
 	print("Client: Received inventory data!", ServerInventoryData)
@@ -250,6 +252,20 @@ function InventoryController:AddItemToInventory(item: InventoryService.ItemType)
 		return true
 	end
 	return false
+end
+
+function InventoryController:OpenSellUI()
+	if not ServerInventoryData then
+		return
+	end
+
+	print("Client: Opening selective sell UI.")
+
+	local sellItemRemote = Remotes.SellSpecificItem()
+
+	SelectiveSellUI:BuildSellList(ServerInventoryData.inventory, sellItemRemote)
+
+	SelectiveSellUI:SetVisible(true)
 end
 
 return InventoryController

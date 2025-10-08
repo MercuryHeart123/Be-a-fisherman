@@ -155,4 +155,23 @@ function InventoryService:SellAllItems()
 	return totalValue
 end
 
+function InventoryService:SellItemInSlot(slotType: "inventory" | "hand", slotId: number)
+	local targetList = if slotType == "inventory" then self.InventoryItems else self.HandItems
+
+	if not targetList[slotId] then
+		warn("Attempted to sell item in invalid slot:", slotId)
+		return 0
+	end
+
+	local slot = targetList[slotId]
+	if slot.item then
+		local price = slot.item.Price or 0
+		self:AddMoney(price)
+		slot.item = nil
+		print(`[InventoryService] Sold item in ${slotType} slot ${slotId} for ${price}`)
+		return price
+	end
+
+	return 0
+end
 return InventoryService

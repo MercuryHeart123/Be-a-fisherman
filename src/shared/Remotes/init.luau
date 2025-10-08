@@ -37,6 +37,8 @@ function Remotes:Init()
 	getOrCreateRemoteEvent("SellAllItems")
 	getOrCreateRemoteEvent("CaughtFish")
 	getOrCreateRemoteEvent("RequestSell")
+	getOrCreateRemoteEvent("SellSpecificItem")
+	getOrCreateRemoteEvent("RequestSellAllItems")
 end
 
 -- Client/server both use these to always get live references
@@ -66,6 +68,14 @@ end
 
 function Remotes.RequestSell(): RemoteEvent
 	return ReplicatedStorage:WaitForChild("RequestSell") :: RemoteEvent
+end
+
+function Remotes.SellSpecificItem(): RemoteEvent
+	return ReplicatedStorage:WaitForChild("SellSpecificItem") :: RemoteEvent
+end
+
+function Remotes.RequestSellAllItems(): RemoteEvent
+	return ReplicatedStorage:WaitForChild("RequestSellAllItems") :: RemoteEvent
 end
 
 return Remotes

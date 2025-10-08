@@ -4,7 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-
+local SelectiveSellUI = require(script.Parent.Parent.UI.SelectiveSellUI)
+local InventoryController = require(script.Parent.InventoryController)
 local InteractionController = {}
 
 local player = Players.LocalPlayer
@@ -12,6 +13,8 @@ local MAX_DISTANCE = 10 -- ระยะห่างที่สามารถ�
 
 local currentTargetNpc = nil -- NPC ที่กำลังอยู่ในระยะ
 local interactionPrompt = nil -- ป้ายข้อความของ NPC
+
+local InventoryController = require(script.Parent.InventoryController)
 
 function InteractionController:Init()
 	local requestSellRemote = Remotes.RequestSell()
@@ -47,6 +50,7 @@ function InteractionController:Init()
 					if interactionPrompt then
 						interactionPrompt.Enabled = false
 					end
+					SelectiveSellUI:SetVisible(false)
 					currentTargetNpc = nil
 					interactionPrompt = nil
 				end
@@ -60,13 +64,17 @@ function InteractionController:Init()
 			return
 		end
 
-		-- ถ้ากด E และอยู่ในระยะ NPC
 		if input.KeyCode == Enum.KeyCode.E and currentTargetNpc then
-			print("Client: E pressed. Firing RequestSell to server.")
-			requestSellRemote:FireServer()
+			-- เช็คว่าหน้าต่างขายของเปิดอยู่หรือไม่
+			if SelectiveSellUI:GetVisible() then
+				-- ถ้าเปิดอยู่ ให้สั่งปิด
+				SelectiveSellUI:SetVisible(false)
+			else
+				-- ถ้าปิดอยู่ ให้สั่งเปิด (เหมือนเดิม)
+				InventoryController:OpenSellUI()
+			end
 		end
 	end)
-
 	print("✅ InteractionController initialized")
 end
 
