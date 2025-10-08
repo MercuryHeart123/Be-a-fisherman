@@ -4,7 +4,7 @@ local ConsumableItem = require(game.ReplicatedStorage.Shared.Models.ConsumableIt
 export type ItemType = RodItem.Type | ConsumableItem.Type | nil
 export type SlotData = {
 	slotId: number,
-	uiSlot: ImageButton?, 
+	uiSlot: ImageButton?,
 	item: ItemType,
 }
 
@@ -13,8 +13,8 @@ export type Type = {
 	new: (itemFactory: ItemFactory.Type) -> Type,
 	AddRod: (self: Type, name: string, price: number) -> (),
 	AddConsumable: (self: Type, name: string, price: number) -> (),
-	GetAllInventoryItems: (self: Type) -> { SlotData }, 
-	GetAllHandItems: (self: Type) -> { SlotData }, 
+	GetAllInventoryItems: (self: Type) -> { SlotData },
+	GetAllHandItems: (self: Type) -> { SlotData },
 	MoveItem: (
 		self: Type,
 		fromType: "inventory" | "hand",
@@ -34,7 +34,7 @@ export type Type = {
 	InventoryItems: { SlotData },
 	HandItems: { SlotData },
 	EquippedIndex: number?,
-	MoneyValue: IntValue, 
+	MoneyValue: IntValue,
 }
 
 local InventoryService: Type = {}
@@ -55,7 +55,7 @@ function InventoryService.new(itemFactory: ItemFactory.Type, moneyValue: IntValu
 	end
 
 	self.MoneyValue = moneyValue
-	
+
 	return self
 end
 
@@ -78,12 +78,16 @@ function InventoryService:GetAllHandItems()
 	return self.HandItems
 end
 
-
 function InventoryService:AddMoney(amount: number)
-    self.MoneyValue.Value += amount 
+	self.MoneyValue.Value += amount
 end
 
-function InventoryService:MoveItem(fromType: "inventory" | "hand", fromIndex: number, toType: "inventory" | "hand", toIndex: number)
+function InventoryService:MoveItem(
+	fromType: "inventory" | "hand",
+	fromIndex: number,
+	toType: "inventory" | "hand",
+	toIndex: number
+)
 	local fromList = if fromType == "inventory" then self.InventoryItems else self.HandItems
 	local toList = if toType == "inventory" then self.InventoryItems else self.HandItems
 
@@ -92,10 +96,8 @@ function InventoryService:MoveItem(fromType: "inventory" | "hand", fromIndex: nu
 		return
 	end
 
-	-- === นี่คือ Logic การสลับที่ถูกต้องและแน่นอนที่สุด ===
-	-- สลับข้อมูล .item ระหว่างช่องต้นทางและปลายทาง
 	fromList[fromIndex].item, toList[toIndex].item = toList[toIndex].item, fromList[fromIndex].item
-    print("[InventoryService] Swapped items between slots.")
+	print("[InventoryService] Swapped items between slots.")
 end
 
 function InventoryService:AddItemByIndex(
@@ -128,30 +130,29 @@ function InventoryService:AddItemToInventory(item: ItemType)
 	return nil
 end
 
--- Method to calculate the total value of inventory items
 function InventoryService:CalculateTotalInventoryValue(): number
-    local totalValue = 0
-    for _, slot in ipairs(self.InventoryItems) do
-        if slot.item then
-            totalValue += slot.item.Price or 0
-        end
-    end
-    return totalValue
+	local totalValue = 0
+	for _, slot in ipairs(self.InventoryItems) do
+		if slot.item then
+			totalValue += slot.item.Price or 0
+		end
+	end
+	return totalValue
 end
 
 function InventoryService:SellAllItems()
-    local totalValue = self:CalculateTotalInventoryValue()
+	local totalValue = self:CalculateTotalInventoryValue()
 
-    for _, slot in ipairs(self.InventoryItems) do
-        slot.item = nil
-    end
+	for _, slot in ipairs(self.InventoryItems) do
+		slot.item = nil
+	end
 
-    if totalValue > 0 then
-        self:AddMoney(totalValue)
-    end
-    
-    print("[InventoryService] Sold all items for:", totalValue)
-    return totalValue
+	if totalValue > 0 then
+		self:AddMoney(totalValue)
+	end
+
+	print("[InventoryService] Sold all items for:", totalValue)
+	return totalValue
 end
 
 return InventoryService

@@ -50,7 +50,6 @@ function InventoryUI:Create()
 	-- Use a layout to manage left and right frames automatically
 	local mainLayout = Instance.new("UIListLayout")
 	mainLayout.FillDirection = Enum.FillDirection.Horizontal
-	mainLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	mainLayout.Parent = mainFrame
 
 	-- ===== All UI creation code is moved inside Create() function =====
@@ -110,6 +109,7 @@ function InventoryUI:Create()
 	grid.CellPadding = UDim2.new(0, 4, 0, 4) -- ปรับ Cell Padding ให้เล็กลง
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.Parent = inventoryFrame
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
 
 	-- Ensure RenderStepped is connected for head tracking
 	if not renderStepConnection then
@@ -120,7 +120,6 @@ function InventoryUI:Create()
 end
 
 function InventoryUI:BuildSlots(inventoryData, slotType: "inventory" | "hand")
-	-- Ensure UI is created before building slots
 	if not screenGui then
 		self:Create()
 	end
@@ -143,7 +142,6 @@ function InventoryUI:BuildSlots(inventoryData, slotType: "inventory" | "hand")
 		newSlotButton.Name = slotType .. "_Slot_" .. i
 		newSlotButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 		newSlotButton.BackgroundTransparency = 0.5
-		-- Size is now controlled by the UIGridLayout
 		newSlotButton.Parent = targetFrame
 		Instance.new("UICorner", newSlotButton).CornerRadius = UDim.new(0, 8)
 
@@ -151,7 +149,7 @@ function InventoryUI:BuildSlots(inventoryData, slotType: "inventory" | "hand")
 		newSlotButton:SetAttribute("SlotType", slotType)
 
 		targetTable[i] = newSlotButton
-		slotData.uiSlot = newSlotButton -- Link UI button to SlotData
+		slotData.uiSlot = newSlotButton
 	end
 end
 

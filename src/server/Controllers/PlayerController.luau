@@ -63,8 +63,8 @@ function PlayerController:Init()
 			2.0
 		)
 		newInventory:AddItemByIndex("inventory", 1, tempRod)
-        newInventory:AddItemToInventory(ItemFactory.createConsumable("ปลา", "rbxassetid://9400392150", 1, 15))
-        newInventory:AddItemToInventory(ItemFactory.createConsumable("ปลาทูน่า", "rbxassetid://9400392150", 2, 25))
+        newInventory:AddItemByIndex("inventory", 2,ItemFactory.createConsumable("ปลา", "rbxassetid://9400392150", 2, 15))
+        newInventory:AddItemByIndex("inventory", 3,ItemFactory.createConsumable("ปลาทูน่า", "rbxassetid://9400392150", 3, 25))
 
         PlayerInventories[player] = newInventory
         print("✅ Created new inventory and leaderstats for player:", player.Name)
