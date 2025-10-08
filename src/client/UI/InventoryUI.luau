@@ -241,7 +241,7 @@ function InventoryUI:applyHeadTracking()
 		return
 	end
 
-	local yaw = offset.X * HEAD_YAW_RANGE
+	local yaw = -offset.X * HEAD_YAW_RANGE
 	local pitch = offset.Y * HEAD_PITCH_RANGE
 	cloneNeck.C0 = defaultNeckC0 * CFrame.Angles(-pitch, -yaw, 0)
 end
