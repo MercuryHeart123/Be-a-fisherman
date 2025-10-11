@@ -40,8 +40,6 @@ function PlayerController:Init()
 	moveInventoryItemRemote.OnServerEvent:Connect(onMoveItemRequest)
 
 	local Remotes = require(ReplicatedStorage.Shared.Remotes)
-
-	-- ...
 	local caughtFishRemote = Remotes.CaughtFish()
 	caughtFishRemote.OnServerEvent:Connect(function(player, fishData)
 		local playerInventory = PlayerInventories[player]

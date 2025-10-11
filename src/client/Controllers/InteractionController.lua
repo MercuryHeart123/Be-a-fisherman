@@ -1,11 +1,8 @@
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
-local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local SelectiveSellUI = require(script.Parent.Parent.UI.SelectiveSellUI)
-local InventoryController = require(script.Parent.InventoryController)
 local InteractionController = {}
 
 local player = Players.LocalPlayer
@@ -17,9 +14,6 @@ local interactionPrompt = nil -- ป้ายข้อความของ NPC
 local InventoryController = require(script.Parent.InventoryController)
 
 function InteractionController:Init()
-	local requestSellRemote = Remotes.RequestSell()
-
-	-- Loop ตรวจสอบระยะห่างตลอดเวลา
 	RunService.Heartbeat:Connect(function()
 		local character = player.Character
 		if not character or not character:FindFirstChild("HumanoidRootPart") then

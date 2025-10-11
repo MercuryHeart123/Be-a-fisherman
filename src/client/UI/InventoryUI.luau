@@ -319,4 +319,8 @@ function InventoryUI:GetSellAllButton()
 	return nil
 end
 
+function InventoryUI:GetGui()
+	return screenGui
+end
+
 return InventoryUI

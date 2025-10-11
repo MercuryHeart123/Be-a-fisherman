@@ -1,3 +1,5 @@
+local StarterPlayer = game:GetService("StarterPlayer")
+local InventoryUI = require(StarterPlayer.StarterPlayerScripts.Client.UI.InventoryUI)
 local SelectiveSellUI = {}
 
 local screenGui: ScreenGui
@@ -5,6 +7,8 @@ local mainFrame: Frame
 local itemsFrame: ScrollingFrame
 local itemTemplate: Frame
 local ServerInventoryData = nil
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 function SelectiveSellUI:Create()
 	if screenGui then
@@ -124,16 +128,27 @@ function SelectiveSellUI:Create()
 	itemPrice.Parent = itemTemplate -- << Parent คือ itemTemplate
 
 	-- 7. แก้ไข SellButton (ไม่ต้องมี Position)
+	-- สร้างปุ่มขาย (เป็นแค่กรอบสีเขียว ไม่มี Text)
 	local sellButton = Instance.new("TextButton")
 	sellButton.Name = "SellButton"
-	sellButton.Size = UDim2.new(1, -20, 0, 35) -- กว้างเกือบเต็ม, สูง 35
+	sellButton.Size = UDim2.new(1, -20, 0, 35)
 	sellButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-	sellButton.Text = "ขาย"
-	sellButton.Font = Enum.Font.BuilderSansBold
-	sellButton.TextSize = 16
-	sellButton.TextColor3 = Color3.new(1, 1, 1)
+	sellButton.Text = "" -- ทำให้ปุ่มไม่มีข้อความของตัวเอง
 	sellButton.Parent = itemTemplate
 	Instance.new("UICorner", sellButton).CornerRadius = UDim.new(0, 4)
+
+	-- สร้าง TextLabel แยกสำหรับข้อความ "ขาย"
+	local sellButtonLabel = Instance.new("TextLabel")
+	sellButtonLabel.Name = "Label"
+	sellButtonLabel.Size = UDim2.new(1, 0, 1, 0) -- ขนาดเต็มปุ่ม
+	sellButtonLabel.BackgroundTransparency = 1 -- ทำให้พื้นหลังโปร่งใส
+	sellButtonLabel.Font = Enum.Font.SourceSansBold
+	sellButtonLabel.TextScaled = false
+	sellButtonLabel.TextSize = 16
+	sellButtonLabel.TextColor3 = Color3.new(1, 1, 1)
+	sellButtonLabel.Text = "ขาย"
+	-- [สำคัญ] กำหนด Parent ให้เป็น sellButton เพื่อให้มันอยู่ข้างใน
+	sellButtonLabel.Parent = sellButton
 
 	local sellAllButton = Instance.new("TextButton")
 	sellAllButton.Name = "SellAllButton"
@@ -147,18 +162,6 @@ function SelectiveSellUI:Create()
 	sellAllButton.TextColor3 = Color3.new(1, 1, 1)
 	sellAllButton.Parent = mainFrame
 	Instance.new("UICorner", sellAllButton).CornerRadius = UDim.new(0, 6)
-	local totalValue = CalculateClientTotalValue()
-
-	sellAllButton.MouseButton1Click:Connect(function()
-		print("Client: Requesting to sell all items.")
-
-		local Remotes = require(game:GetService("ReplicatedStorage").Shared.Remotes)
-		-- self:ShowSellAllConfirmationPopup(totalValue, function()
-		Remotes.RequestSellAllItems():FireServer()
-		-- end)
-
-		SelectiveSellUI:SetVisible(false)
-	end)
 end
 
 -- ฟังก์ชันสำหรับสร้างรายการไอเทม
@@ -209,26 +212,27 @@ end
 -- ใน SelectiveSellUI.lua (วางไว้ใกล้ๆ กับ ShowConfirmationPopup เดิม)
 
 function SelectiveSellUI:ShowSellAllConfirmationPopup(totalValue, onConfirmCallback)
-	-- สร้าง Overlay และ Popup Frame (เหมือนเดิม)
+	-- สร้าง Overlay (ฉากหลังสีดำ)
 	local overlay = Instance.new("Frame")
-	overlay.Name = "ConfirmationOverlay"
+	overlay.Name = "SellAllConfirmationOverlay"
 	overlay.Size = UDim2.new(1, 0, 1, 0)
 	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
 	overlay.BackgroundTransparency = 0.7
-	overlay.ZIndex = 10
-	overlay.Active = true
-	overlay.Parent = screenGui
+	overlay.ZIndex = 20
+	overlay.Active = true -- ทำให้คลิกทะลุไม่ได้
 
+	-- สร้างกรอบ Popup
 	local popupFrame = Instance.new("Frame")
 	popupFrame.Name = "PopupFrame"
 	popupFrame.Size = UDim2.new(0, 300, 0, 150)
 	popupFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
 	popupFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	popupFrame.ZIndex = 11
-	popupFrame.Parent = overlay
-	Instance.new("UICorner", popupFrame).CornerRadius = UDim.new(0, 8)
+	popupFrame.BorderSizePixel = 0
+	popupFrame.ZIndex = 21 -- << ZIndex สูงกว่า overlay จะอยู่ข้างบนเสมอ
+	local popupCorner = Instance.new("UICorner", popupFrame)
+	popupCorner.CornerRadius = UDim.new(0, 8)
 
-	-- สร้างข้อความ (ใช้ totalValue ที่รับเข้ามา)
+	-- สร้างข้อความ
 	local message = Instance.new("TextLabel")
 	message.Name = "Message"
 	message.Size = UDim2.new(1, -20, 0, 80)
@@ -244,23 +248,54 @@ function SelectiveSellUI:ShowSellAllConfirmationPopup(totalValue, onConfirmCallb
 	)
 	message.Parent = popupFrame
 
-	-- ... (โค้ดสร้าง cancelButton และ confirmButton เหมือนเดิม) ...
+	-- สร้างปุ่มยกเลิก
 	local cancelButton = Instance.new("TextButton")
-	-- ...
+	cancelButton.Name = "CancelButton"
+	cancelButton.Size = UDim2.new(0.5, -15, 0, 40)
+	cancelButton.Position = UDim2.new(0, 10, 1, -50)
+	cancelButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+	cancelButton.Text = "ยกเลิก"
+	cancelButton.Font = Enum.Font.SourceSansBold
+	cancelButton.TextSize = 16
+	cancelButton.TextColor3 = Color3.new(1, 1, 1)
+	cancelButton.TextTransparency = 0
+	local cancelCorner = Instance.new("UICorner", cancelButton)
+	cancelCorner.CornerRadius = UDim.new(0, 6)
 	cancelButton.Parent = popupFrame
+
+	-- สร้างปุ่มยืนยัน
 	local confirmButton = Instance.new("TextButton")
-	-- ...
+	confirmButton.Name = "ConfirmButton"
+	confirmButton.Size = UDim2.new(0.5, -15, 0, 40)
+	confirmButton.Position = UDim2.new(0.5, 5, 1, -50)
+	confirmButton.BackgroundColor3 = Color3.fromRGB(60, 180, 60)
+	confirmButton.Text = "ยืนยัน"
+	confirmButton.Font = Enum.Font.SourceSansBold
+	confirmButton.TextSize = 16
+	confirmButton.TextColor3 = Color3.new(1, 1, 1)
+	confirmButton.TextTransparency = 0
+	local confirmCorner = Instance.new("UICorner", confirmButton)
+	confirmCorner.CornerRadius = UDim.new(0, 6)
 	confirmButton.Parent = popupFrame
 
-	-- เชื่อมต่อ Event (เหมือนเดิม)
-	cancelButton.MouseButton1Click:Connect(function()
+	-- ฟังก์ชันสำหรับทำลาย Popup ทั้งหมด
+	local function cleanup()
 		overlay:Destroy()
-	end)
+		popupFrame:Destroy() -- << ต้องทำลาย popupFrame ด้วย
+	end
+
+	-- เชื่อมต่อ Event ของปุ่ม
+	cancelButton.MouseButton1Click:Connect(cleanup)
 
 	confirmButton.MouseButton1Click:Connect(function()
 		onConfirmCallback()
-		overlay:Destroy()
+		cleanup()
 	end)
+
+	-- === Parent ทุกอย่างเข้า ScreenGui ตอนท้ายสุด ===
+	-- เพื่อประสิทธิภาพที่ดี และป้องกันปัญหาการแสดงผล
+	overlay.Parent = screenGui
+	popupFrame.Parent = screenGui -- << [ แก้ไขสำคัญ ] ให้ popupFrame อยู่ระดับเดียวกับ overlay
 end
 
 function SelectiveSellUI:ShowConfirmationPopup(onConfirmCallback)
@@ -341,18 +376,11 @@ function SelectiveSellUI:ShowConfirmationPopup(onConfirmCallback)
 	end)
 end
 
-function CalculateClientTotalValue()
-	if not ServerInventoryData then
-		return 0
+function SelectiveSellUI:GetSellAllButton()
+	if mainFrame then
+		return mainFrame:FindFirstChild("SellAllButton")
 	end
-
-	local totalValue = 0
-	for _, slotData in ipairs(ServerInventoryData.inventory) do
-		if slotData.item then
-			totalValue += slotData.item.Price or 0
-		end
-	end
-	return totalValue
+	return nil
 end
 
 return SelectiveSellUI

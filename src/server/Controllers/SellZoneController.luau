@@ -25,14 +25,11 @@ function SellZoneController:Init(inventories)
 	end)
 
 	local requestSellAllRemote = Remotes.RequestSellAllItems()
-
 	requestSellAllRemote.OnServerEvent:Connect(function(player)
 		local playerInventory = PlayerControllerModule:GetPlayerInventory(player)
 		if playerInventory then
 			local totalSold = playerInventory:SellAllItems()
-
 			print(`[Server] Player ${player.Name} sold all items for ${totalSold}`)
-
 			local inventoryUpdatedRemote = Remotes.InventoryUpdated()
 			local inventoryData = playerInventory:GetAllInventoryItems()
 			local handData = playerInventory:GetAllHandItems()

@@ -26,12 +26,25 @@ local inventoryUpdatedRemote = Remotes.InventoryUpdated()
 
 -- Server inventory data
 local ServerInventoryData = nil
-
--- Added a guard variable `isInitialized` to prevent multiple initializations.
--- Updated `Init` to check and set `isInitialized`.
 local isInitialized = false
 
+local function CalculateClientTotalValue()
+	if not ServerInventoryData then
+		return 0
+	end
+
+	local totalValue = 0
+	for _, slotData in ipairs(ServerInventoryData.inventory) do
+		if slotData.item then
+			totalValue += slotData.item.Price or 0
+		end
+	end
+	return totalValue
+end
+
 function InventoryController:Init()
+	print("test InventoryController")
+
 	if isInitialized then
 		return
 	end
@@ -41,12 +54,33 @@ function InventoryController:Init()
 	SelectiveSellUI:Create()
 
 	ServerInventoryData = getInventoryDataRemote:InvokeServer()
-	print("Client: Received inventory data!", ServerInventoryData)
 	DragSystem:Init(ServerInventoryData, moveInventoryItemRemote)
 
 	if not ServerInventoryData then
 		warn("Could not get inventory data from server!")
 		return
+	end
+
+	local sellAllButton = SelectiveSellUI:GetSellAllButton() -- ขอปุ่มมาจาก UI
+	if sellAllButton then
+		sellAllButton.MouseButton1Click:Connect(function()
+			-- ก. คำนวณราคารวมจากข้อมูลล่าสุด
+			local totalValue = CalculateClientTotalValue()
+			print("totalValueซื้อทั้งหมด:", totalValue)
+
+			if totalValue > 0 then
+				-- ข. แสดง Popup ถามยืนยัน
+				-- SelectiveSellUI:ShowSellAllConfirmationPopup(totalValue, function()
+				-- ค. โค้ดนี้จะทำงานเมื่อกด "ยืนยัน" เท่านั้น
+				print("Client: Confirmed selling all items.")
+				Remotes.RequestSellAllItems():FireServer()
+				SelectiveSellUI:SetVisible(false)
+				-- end)
+			else
+				print("Client: No items to sell.")
+				-- (ทางเลือก) อาจจะสร้าง Popup บอกว่า "ไม่มีของจะขาย"
+			end
+		end)
 	end
 
 	-- สร้าง UI จากข้อมูลจริงที่ได้รับมา
@@ -113,7 +147,6 @@ function InventoryController:Init()
 
 	-- ดักฟังข้อมูลอัปเดตจาก Server
 	inventoryUpdatedRemote.OnClientEvent:Connect(function(newData)
-		print("Client: Received inventory update from server!")
 		print("DEBUG: Data received from server:", newData)
 
 		if ServerInventoryData then
@@ -131,12 +164,17 @@ function InventoryController:Init()
 				end
 			end
 		else
-			-- Emergency case: if ServerInventoryData is missing (should not happen)
 			ServerInventoryData = newData
 		end
 
 		InventoryUI:UpdateAllSlots(ServerInventoryData.inventory, ServerInventoryData.hand)
 		HandUI:UpdateAllSlots(ServerInventoryData.hand)
+
+		if SelectiveSellUI:GetVisible() then
+			print("Client: Sell UI is open, rebuilding list after update...")
+			local sellItemRemote = Remotes.SellSpecificItem()
+			SelectiveSellUI:BuildSellList(ServerInventoryData.inventory, sellItemRemote)
+		end
 	end)
 
 	isInitialized = true
@@ -240,6 +278,7 @@ end
 function InventoryController:SetSelectedItem(item: InventoryService.ItemType)
 	SelectedItem = item
 end
+
 function InventoryController:GetSelectedItem(): InventoryService.ItemType
 	return SelectedItem
 end
@@ -259,7 +298,7 @@ function InventoryController:OpenSellUI()
 		return
 	end
 
-	print("Client: Opening selective sell UI.")
+	print("DEBUG: Data being passed to BuildSellList:", ServerInventoryData.inventory)
 
 	local sellItemRemote = Remotes.SellSpecificItem()
 

@@ -1,5 +1,4 @@
 -- StarterPlayerScripts/Client/Controllers/FishingController.lua
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
